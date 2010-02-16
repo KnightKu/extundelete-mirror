@@ -1,0 +1,21 @@
+To compile and install this program, you should first
+install the binary and development packages for
+e2fsprogs and e2fslibs.  You must also have g++ and
+GNU make to compile the program.
+
+To compile the program, simply enter the command
+'make' from the 'src' directory of this package.
+
+To run the program, type 'extundelete --help' to see
+various options available to you.
+
+The file 'testing.txt' illustrates a simple usage of
+this program.
+
+Example compilation instructions:
+tar -xjf extundelete-0.1.8.tar.bz2
+cd extundelete-0.1.8
+cd src
+make
+cd ..
+src/extundelete --help
