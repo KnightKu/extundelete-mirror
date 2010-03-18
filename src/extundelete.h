@@ -70,16 +70,16 @@ void print_version(void);
 void journal_header_to_cpu(char *);
 
 // Main implementation function declarations
-void decode_options(int& argc, char**& argv);
+int decode_options(int& argc, char**& argv);
 void examine_fs(ext2_filsys fs);
 void load_super_block(ext2_filsys fs);
 void init_journal(ext2_filsys fs, ext2_filsys jfs, journal_superblock_t *jsb);
 void restore_file(ext2_filsys fs, ext2_filsys jfs, const std::string& fname);
-void restore_inode(ext2_filsys fs, ext2_filsys jfs, ext2_ino_t ino, const std::string& dname);
+int restore_inode(ext2_filsys fs, ext2_filsys jfs, ext2_ino_t ino, const std::string& dname);
 void parse_inode_block(struct ext2_inode *inode, const char *buf, ext2_ino_t ino);
 errcode_t recover_inode(ext2_filsys fs, ext2_filsys jfs, ext2_ino_t ino, struct ext2_inode *&inode, int ver);
 int pair_names_with(ext2_filsys fs, ext2_filsys jfs, std::vector<ext2_ino_t>& inolist, ext2_ino_t ino, std::string dirname, int del, std::vector<ext2_ino_t>& parent_inos);
-void read_journal_block(ext2_filsys fs, blk_t n, char *buf);
+int read_journal_block(ext2_filsys fs, blk_t n, char *buf);
 
 // From insertionops.cc
 std::ostream& operator<<(std::ostream& os, const ext2_super_block* const super_block);

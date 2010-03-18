@@ -2,7 +2,7 @@
 // 
 // Parts of this program are based upon ext3grep, which was licensed under the
 // GPL v2 or later and copyright 2008 by Carlo Wood.
-// extundelete Copyright 2009, by Nic Case
+// extundelete Copyright 2009-10, by Nic Case
 //
 // This program may be redistributed under the terms of the GNU Public
 // License version 2.
@@ -435,11 +435,23 @@ void print_usage(std::ostream& os)
 
 
 // Main program implementation
+#define EU_DECODE_FAIL  1
+#define EU_STOP     2
 int main(int argc, char* argv[])
 {
+  struct stat statbuf;
+  int error = 0;
+  ext2_filsys fs;
+  io_manager io_mgr = unix_io_manager;
+  errcode_t errcode;
   progname = argv[0];
 
-  decode_options(argc, argv);
+  errcode = decode_options(argc, argv);
+  if(errcode) {
+    if(errcode == EU_STOP) return 0;
+    std::cerr << "Error parsing command-line options." << std::endl;
+    exit(EXIT_FAILURE);
+  }
   
   // Sanity checks on the user.
   if (argc != 1)
@@ -454,9 +466,7 @@ int main(int argc, char* argv[])
   }
 
   // Ensure the file is a filesystem.
-  struct stat statbuf;
   errno = 0;
-  int error = 0;
   if (stat(*argv, &statbuf) == -1)
   {
     error = errno;
@@ -483,9 +493,7 @@ int main(int argc, char* argv[])
   }
 
   // Open the filesystem.
-  ext2_filsys fs;
-  io_manager io_mgr = unix_io_manager;
-  errcode_t errcode = ext2fs_open( *argv, 0, commandline_backup_superblock,
+  errcode = ext2fs_open( *argv, 0, commandline_backup_superblock,
                           commandline_block_size, io_mgr, &fs);
 
   if(errcode)
@@ -501,15 +509,17 @@ int main(int argc, char* argv[])
 
   examine_fs(fs);
 
-  ext2fs_close(fs);
-
+  errcode = ext2fs_close(fs);
+  if(errcode) {
+    std::cerr << "Warning: Error closing filesystem; code " << errcode << std::endl;
+  }
   // Sync here to ensure all recovered data is physically written to disk.
   sync();
   return 0;
 }
 
 //FIXME: Some of the string conversions are to long values that get stored as ints.
-void decode_options(int& argc, char**& argv)
+int decode_options(int& argc, char**& argv)
 {
   int short_option;
   static int long_option;
@@ -574,10 +584,10 @@ void decode_options(int& argc, char**& argv)
         {
           case opt_help:
             print_usage(std::cout);
-            exit(EXIT_SUCCESS);
+            return EU_STOP;
           case opt_version:
             print_version();
-            exit(EXIT_SUCCESS);
+            return EU_STOP;
 	      case opt_superblock:
 	        commandline_superblock = true;
 	        break;
@@ -597,7 +607,7 @@ void decode_options(int& argc, char**& argv)
             commandline_after = strtol(optarg, NULL, 10);
             if(errno) {
               std::cerr << "Invalid parameter: --after " << optarg << std::endl;
-              exit(EXIT_FAILURE);
+              return EU_DECODE_FAIL;
             }
 	        break;
 	      case opt_before:
@@ -605,7 +615,7 @@ void decode_options(int& argc, char**& argv)
             commandline_before = strtol(optarg, NULL, 10);
             if(errno) {
               std::cerr << "Invalid parameter: --before " << optarg << std::endl;
-              exit(EXIT_FAILURE);
+              return EU_DECODE_FAIL;
             }
 	        break;
 	      case opt_restore_inode:
@@ -631,14 +641,14 @@ void decode_options(int& argc, char**& argv)
             commandline_inode_to_block = strtol(optarg, NULL, 10);
             if(errno) {
               std::cerr << "Invalid parameter: --inode-to-block " << optarg << std::endl;
-              exit(EXIT_FAILURE);
+              return EU_DECODE_FAIL;
             }
 	        if (commandline_inode_to_block < 1)
 	        {
 	          std::cout << std::flush;
 	          std::cerr << progname << ": --inode-to-block: inode "
                 << commandline_inode_to_block << " is out of range." << std::endl;
-	          exit(EXIT_FAILURE);
+	          return EU_DECODE_FAIL;
 	        }
             break;
           case opt_inode:
@@ -646,14 +656,14 @@ void decode_options(int& argc, char**& argv)
             commandline_inode = strtol(optarg, NULL, 10);
             if(errno) {
               std::cerr << "Invalid parameter: --inode " << optarg << std::endl;
-              exit(EXIT_FAILURE);
+              return EU_DECODE_FAIL;
             }
 	        if (commandline_inode < 1)
 	        {
 	          std::cout << std::flush;
 	          std::cerr << progname << ": --inode: inode " << commandline_inode
                 << " is out of range." << std::endl;
-	          exit(EXIT_FAILURE);
+	          return EU_DECODE_FAIL;
 	        }
 	        ++exclusive1;
 	        ++exclusive2;
@@ -663,14 +673,14 @@ void decode_options(int& argc, char**& argv)
             commandline_block = strtol(optarg, NULL, 10);
             if(errno) {
               std::cerr << "Invalid parameter: --block " << optarg << std::endl;
-              exit(EXIT_FAILURE);
+              return EU_DECODE_FAIL;
             }
 	        if (commandline_block < 0)
 	        {
 	          std::cout << std::flush;
 	          std::cerr << progname << ": --block: block " << commandline_block
                 << " is out of range." << std::endl;
-	          exit(EXIT_FAILURE);
+	          return EU_DECODE_FAIL;
 	        }
 	        ++exclusive1;
 	        ++exclusive2;
@@ -680,7 +690,7 @@ void decode_options(int& argc, char**& argv)
 	        commandline_show_journal_inodes = strtol(optarg, NULL, 10);
             if(errno) {
               std::cerr << "Invalid parameter: --show-journal-inodes " << optarg << std::endl;
-              exit(EXIT_FAILURE);
+              return EU_DECODE_FAIL;
             }
 	        if (commandline_show_journal_inodes < 1)
 	        {
@@ -688,7 +698,7 @@ void decode_options(int& argc, char**& argv)
 	          std::cerr << progname << ": --show-journal-inodes: inode "
                 << commandline_show_journal_inodes << " is out of range."
                 << std::endl;
-	          exit(EXIT_FAILURE);
+	          return EU_DECODE_FAIL;
 	        }
 	        ++exclusive1;
 	        ++exclusive2;
@@ -698,7 +708,7 @@ void decode_options(int& argc, char**& argv)
             commandline_journal_transaction = strtol(optarg, NULL, 10);
             if(errno) {
               std::cerr << "Invalid parameter: --journal-transaction " << optarg << std::endl;
-              exit(EXIT_FAILURE);
+              return EU_DECODE_FAIL;
             }
 	        break;
 	      case opt_histogram:
@@ -719,7 +729,7 @@ void decode_options(int& argc, char**& argv)
         commandline_backup_superblock = strtoul(optarg, NULL, 10);
         if(errno) {
           std::cerr << "Invalid parameter: -b " << optarg << std::endl;
-          exit(EXIT_FAILURE);
+          return EU_DECODE_FAIL;
         }
         break;
       }
@@ -729,14 +739,14 @@ void decode_options(int& argc, char**& argv)
         commandline_block_size = strtoul(optarg, NULL, 10);
         if(errno) {
           std::cerr << "Invalid parameter: -B " << optarg << std::endl;
-          exit(EXIT_FAILURE);
+          return EU_DECODE_FAIL;
         }
         break;
       }
       case 'v':
       case 'V':
         print_version();
-        exit(EXIT_SUCCESS);
+        return EU_STOP;
     }
   }
 
@@ -746,7 +756,7 @@ void decode_options(int& argc, char**& argv)
     std::cerr << progname << ": Only one of --group, --inode, --block, "
       << "--journal-block, --dump-names or --show-journal-inodes may be "
       << "specified." << std::endl;
-    exit(EXIT_FAILURE);
+    return EU_DECODE_FAIL;
   }
   if (exclusive2 > 1)
   {
@@ -754,7 +764,7 @@ void decode_options(int& argc, char**& argv)
     std::cerr << progname << ": Only one of --inode, --block, --search*, "
       << "--journal-block, --dump-names or --show-journal-inodes may be "
       << "specified." << std::endl;
-    exit(EXIT_FAILURE);
+    return EU_DECODE_FAIL;
   }
   bool outputwritten = false;
   commandline_action =
@@ -804,8 +814,9 @@ void decode_options(int& argc, char**& argv)
   if (argc == 0)
   {
     print_usage(std::cerr);
-    exit(EXIT_FAILURE);
+    return EU_DECODE_FAIL;
   }
+  return 0;
 }
 
 
@@ -945,7 +956,7 @@ static void dump_hex_to(std::ostream& os, char const* buf, size_t size)
 // the input buffer beginning at location 'blockcnt'.
 // NOTE:  The output returned by this command should be corrected to the proper
 //    endianness for the host cpu when reading multi-byte structures from disk.
-int read_block(ext2_filsys fs, blk_t *blocknr, e2_blkcnt_t blockcnt,
+errcode_t read_block(ext2_filsys fs, blk_t *blocknr, e2_blkcnt_t blockcnt,
                blk_t /*ref_blk*/, int /*ref_offset*/, void *buf)
 {
   errcode_t retval = io_channel_read_blk(fs->io,  *blocknr,  1,
@@ -1012,8 +1023,13 @@ bool is_journal(ext2_filsys fs, blk_t block)
   struct ext2_inode *inode = new ext2_inode;
   ext2fs_read_inode (fs, ino, inode);
   blk_t *blocks = new blk_t[ numblocks(inode) ];
+  errcode_t errcode;
 
-  ext2fs_block_iterate2 (fs, ino, 0, 0, get_block_nums, blocks);
+  errcode = ext2fs_block_iterate2 (fs, ino, 0, 0, get_block_nums, blocks);
+  if(errcode){
+    std::cout << "Warning: unknown error encountered; code " << errcode << std::endl;
+    return flag;
+  }
   std::cout << blocks[0] << std::endl;
   for (uint32_t n = 0; n < numblocks(inode); n++)
     if (block == blocks[n])
@@ -1634,7 +1650,7 @@ void examine_fs(ext2_filsys fs)
 }
 
 /* Read a single block from the journal */
-void read_journal_block(ext2_filsys fs, blk_t n, char *buf)
+int read_journal_block(ext2_filsys fs, blk_t n, char *buf)
 {
   if(super_block.s_journal_inum) {
     read_block(fs, &n, 0, 0, 0, buf);
@@ -1647,6 +1663,7 @@ void read_journal_block(ext2_filsys fs, blk_t n, char *buf)
       exit(1);
     }
   }
+  return 0;
 }
 
 /*  
@@ -2342,18 +2359,20 @@ void sanitize_file_name(std::string& str )
 
 }
 
-void restore_inode(ext2_filsys fs, ext2_filsys jfs, ext2_ino_t ino, const std::string& dname)
+#define EU_RESTORE_FAIL 1
+int restore_inode(ext2_filsys fs, ext2_filsys jfs, ext2_ino_t ino, const std::string& dname)
 {
   errcode_t retval;
   struct ext2_inode *inode = new ext2_inode;
   std::string fname (dname);
   sanitize_file_name(fname);
+
   retval = recover_inode(fs, jfs, ino, inode, 0);
   if( retval ) {
     std::cout << "Unable to restore inode " << ino << " (" << fname;
     std::cout << "): No undeleted copies found in the journal." << std::endl;
     delete inode;
-    return;
+    return EU_RESTORE_FAIL;
   }
   blk_t blocknum = 0;
 //  retval = ext2fs_bmap(fs, ino, inode, NULL, 0, 0, &blocknum);
@@ -2363,7 +2382,7 @@ void restore_inode(ext2_filsys fs, ext2_filsys jfs, ext2_ino_t ino, const std::s
     std::cout << "Unable to restore inode " << ino << " (" << fname;
     std::cout << "): No data found." << std::endl;
     delete inode;
-    return;
+    return EU_RESTORE_FAIL;
   }
   if (blocknum != 0) {
     int allocated = extundelete_test_block_bitmap(fs->block_map, blocknum);
@@ -2371,7 +2390,7 @@ void restore_inode(ext2_filsys fs, ext2_filsys jfs, ext2_ino_t ino, const std::s
       std::cout << "Unable to restore inode " << ino << " (" << fname;
       std::cout << "): Space has been reallocated." << std::endl;
       delete inode;
-      return;
+      return EU_RESTORE_FAIL;
     }
   }
 
@@ -2431,27 +2450,32 @@ void restore_inode(ext2_filsys fs, ext2_filsys jfs, ext2_ino_t ino, const std::s
         truncate( (outputdir + fname2).c_str(), EXT2_I_SIZE(inode));
         std::cout << "Restored inode " << ino << " to file ";
         std::cout << (outputdir + fname2) << std::endl;
+        retval = 0;
       }
       else {
         std::cout << "Failed to restore inode " << ino << " to file ";
         std::cout << (outputdir + fname2) << ":";
         std::cout << "Some blocks were allocated." << std::endl;
+        retval = EU_RESTORE_FAIL;
       }
     }
     else {
       std::cout << "Failed to restore inode " << ino << " to file ";
       std::cout << (outputdir + fname2) << ":";
       std::cout << "Could not open output file." << std::endl;
+      retval = EU_RESTORE_FAIL;
     }
   }
   else {
     std::cout << "Failed to restore inode " << ino << " to file ";
     std::cout << (outputdir + fname2) << ":";
     std::cout << "Inode does not correspond to a regular file." << std::endl;
+    retval = EU_RESTORE_FAIL;
   }
 
   delete inode;
   delete[] buf;
+  return retval;
 }
 
 void parse_inode_block(struct ext2_inode *inode, const char *buf, ext2_ino_t ino)
