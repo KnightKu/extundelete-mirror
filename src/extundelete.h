@@ -71,9 +71,9 @@ void journal_header_to_cpu(char *);
 
 // Main implementation function declarations
 int decode_options(int& argc, char**& argv);
-void examine_fs(ext2_filsys fs);
-void load_super_block(ext2_filsys fs);
-void init_journal(ext2_filsys fs, ext2_filsys jfs, journal_superblock_t *jsb);
+int examine_fs(ext2_filsys fs);
+int load_super_block(ext2_filsys fs);
+int init_journal(ext2_filsys fs, ext2_filsys jfs, journal_superblock_t *jsb);
 void restore_file(ext2_filsys fs, ext2_filsys jfs, const std::string& fname);
 int restore_inode(ext2_filsys fs, ext2_filsys jfs, ext2_ino_t ino, const std::string& dname);
 void parse_inode_block(struct ext2_inode *inode, const char *buf, ext2_ino_t ino);
