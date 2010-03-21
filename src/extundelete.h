@@ -91,7 +91,7 @@ int pair_names_with(ext2_filsys fs, ext2_filsys jfs, std::vector<ext2_ino_t>& in
 int read_journal_block(ext2_filsys fs, blk_t n, char *buf);
 
 // From insertionops.cc
-std::ostream& operator<<(std::ostream& os, const ext2_super_block* const super_block);
+std::ostream& operator<<(std::ostream& os, const ext2_super_block* const s_block);
 std::ostream& operator<<(std::ostream& os, journal_header_t const& journal_header);
 std::ostream& operator<<(std::ostream& os, const ext2_inode& inode);
 std::ostream& operator<<(std::ostream& os, const ext2_group_desc& group_desc);

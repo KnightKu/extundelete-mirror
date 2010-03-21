@@ -50,105 +50,105 @@ std::ostream& operator<<(std::ostream& os, const ext2_inode& inode)
   return os;
 }
 
-std::ostream& operator<<(std::ostream& os, const ext2_super_block* const super_block)
+std::ostream& operator<<(std::ostream& os, const ext2_super_block* const s_block)
 {
   // This was largely generated with:
-  //  awk 'BEGIN { decode=0 } /^struct ext2_super_block/ { decode=1 } /^};/ { decode=0 } { if (decode) print; }' /usr/include/ext2fs/ext2_fs.h | sed -rn 's/^[[:space:]]*(|\/\*[0-9A-F]*\*\/[[:space:]]*)__[[:alnum:]_]*[[:space:]]*(s_[[:alnum:]_]*)(;|\[[0-9]+\];)[[:space:]]*\/\*[[:space:]](.*)[[:space:]]\*\/.*/  os << "\4: " << super_block->\2 << 'std::endl';/p'
-  os << "Inodes count: " << super_block->s_inodes_count << std::endl;
-  os << "Blocks count: " << super_block->s_blocks_count << std::endl;
-  os << "Reserved blocks count: " << super_block->s_r_blocks_count << std::endl;
-  os << "Free blocks count: " << super_block->s_free_blocks_count << std::endl;
-  os << "Free inodes count: " << super_block->s_free_inodes_count << std::endl;
-  os << "First Data Block: " << super_block->s_first_data_block << std::endl;
-  os << "Block size: " << EXT2_BLOCK_SIZE(super_block) << std::endl;
-  os << "Fragment size: " << EXT2_FRAG_SIZE(super_block) << std::endl;
-  os << "# Blocks per group: " << super_block->s_blocks_per_group << std::endl;
-  os << "# Fragments per group: " << super_block->s_frags_per_group << std::endl;
-  os << "# Inodes per group: " << super_block->s_inodes_per_group << std::endl;
-  os << "Mount time: " << super_block->s_mtime << std::endl;
-  os << "Write time: " << super_block->s_wtime << std::endl;
-  os << "Mount count: " << super_block->s_mnt_count << std::endl;
-  os << "Maximal mount count: " << super_block->s_max_mnt_count << std::endl;
-  os << "Magic signature: " << super_block->s_magic << std::endl;
-  os << "File system state: " << super_block->s_state << std::endl;
-  os << "Behaviour when detecting errors: " << super_block->s_errors << std::endl;
-  os << "minor revision level: " << super_block->s_minor_rev_level << std::endl;
-  os << "time of last check: " << super_block->s_lastcheck << std::endl;
-  os << "max. time between checks: " << super_block->s_checkinterval << std::endl;
-  os << "OS: " << super_block->s_creator_os << std::endl;
-  os << "Revision level: " << super_block->s_rev_level << std::endl;
-  os << "Default uid for reserved blocks: " << super_block->s_def_resuid << std::endl;
-  os << "Default gid for reserved blocks: " << super_block->s_def_resgid << std::endl;
-  os << "First non-reserved inode: " << super_block->s_first_ino << std::endl;
-  os << "size of inode structure: " << super_block->s_inode_size << std::endl;
-  os << "block group # of this superblock: " << super_block->s_block_group_nr << std::endl;
-  os << "compatible feature set: " << super_block->s_feature_compat << std::endl;
-  os << "incompatible feature set: " << super_block->s_feature_incompat << std::endl;
-  os << "readonly-compatible feature set: " << super_block->s_feature_ro_compat << std::endl;
+  //  awk 'BEGIN { decode=0 } /^struct ext2_super_block/ { decode=1 } /^};/ { decode=0 } { if (decode) print; }' /usr/include/ext2fs/ext2_fs.h | sed -rn 's/^[[:space:]]*(|\/\*[0-9A-F]*\*\/[[:space:]]*)__[[:alnum:]_]*[[:space:]]*(s_[[:alnum:]_]*)(;|\[[0-9]+\];)[[:space:]]*\/\*[[:space:]](.*)[[:space:]]\*\/.*/  os << "\4: " << s_block->\2 << 'std::endl';/p'
+  os << "Inodes count: " << s_block->s_inodes_count << std::endl;
+  os << "Blocks count: " << s_block->s_blocks_count << std::endl;
+  os << "Reserved blocks count: " << s_block->s_r_blocks_count << std::endl;
+  os << "Free blocks count: " << s_block->s_free_blocks_count << std::endl;
+  os << "Free inodes count: " << s_block->s_free_inodes_count << std::endl;
+  os << "First Data Block: " << s_block->s_first_data_block << std::endl;
+  os << "Block size: " << EXT2_BLOCK_SIZE(s_block) << std::endl;
+  os << "Fragment size: " << EXT2_FRAG_SIZE(s_block) << std::endl;
+  os << "# Blocks per group: " << s_block->s_blocks_per_group << std::endl;
+  os << "# Fragments per group: " << s_block->s_frags_per_group << std::endl;
+  os << "# Inodes per group: " << s_block->s_inodes_per_group << std::endl;
+  os << "Mount time: " << s_block->s_mtime << std::endl;
+  os << "Write time: " << s_block->s_wtime << std::endl;
+  os << "Mount count: " << s_block->s_mnt_count << std::endl;
+  os << "Maximal mount count: " << s_block->s_max_mnt_count << std::endl;
+  os << "Magic signature: " << s_block->s_magic << std::endl;
+  os << "File system state: " << s_block->s_state << std::endl;
+  os << "Behaviour when detecting errors: " << s_block->s_errors << std::endl;
+  os << "minor revision level: " << s_block->s_minor_rev_level << std::endl;
+  os << "time of last check: " << s_block->s_lastcheck << std::endl;
+  os << "max. time between checks: " << s_block->s_checkinterval << std::endl;
+  os << "OS: " << s_block->s_creator_os << std::endl;
+  os << "Revision level: " << s_block->s_rev_level << std::endl;
+  os << "Default uid for reserved blocks: " << s_block->s_def_resuid << std::endl;
+  os << "Default gid for reserved blocks: " << s_block->s_def_resgid << std::endl;
+  os << "First non-reserved inode: " << s_block->s_first_ino << std::endl;
+  os << "size of inode structure: " << s_block->s_inode_size << std::endl;
+  os << "block group # of this superblock: " << s_block->s_block_group_nr << std::endl;
+  os << "compatible feature set: " << s_block->s_feature_compat << std::endl;
+  os << "incompatible feature set: " << s_block->s_feature_incompat << std::endl;
+  os << "readonly-compatible feature set: " << s_block->s_feature_ro_compat << std::endl;
   os << "128-bit uuid for volume: ";
     for(int n = 0; n < 16; n++)
-      os << tohex((int) super_block->s_uuid[n], 2);
+      os << tohex((int) s_block->s_uuid[n], 2);
   os << std::endl;
 
-  os << "For compression: " << super_block->s_algorithm_usage_bitmap << std::endl;
-  os << "Nr to preallocate for dirs: " << (int) super_block->s_prealloc_dir_blocks << std::endl;
-  os << "Per group table for online growth: " << super_block->s_reserved_gdt_blocks << std::endl;
+  os << "For compression: " << s_block->s_algorithm_usage_bitmap << std::endl;
+  os << "Nr to preallocate for dirs: " << (int) s_block->s_prealloc_dir_blocks << std::endl;
+  os << "Per group table for online growth: " << s_block->s_reserved_gdt_blocks << std::endl;
   os << "uuid of journal superblock: ";
     for(int n = 0; n < 16; n++)
-      os << tohex((int) super_block->s_journal_uuid[n], 2);
+      os << tohex((int) s_block->s_journal_uuid[n], 2);
   os << std::endl;
 
-  os << "inode number of journal file: " << super_block->s_journal_inum << std::endl;
-  os << "device number of journal file: " << super_block->s_journal_dev << std::endl;
-  os << "start of list of inodes to delete: " << super_block->s_last_orphan << std::endl;
+  os << "inode number of journal file: " << s_block->s_journal_inum << std::endl;
+  os << "device number of journal file: " << s_block->s_journal_dev << std::endl;
+  os << "start of list of inodes to delete: " << s_block->s_last_orphan << std::endl;
   os << "HTREE hash seed: ";
     for(int n = 0; n < 4; n++)
-      os << tohex((unsigned int) super_block->s_hash_seed[n], 8);
+      os << tohex((unsigned int) s_block->s_hash_seed[n], 8);
   os << std::endl;
 
-  os << "Default hash version to use: " << (int) super_block->s_def_hash_version << std::endl;
-  os << "Default type of journal backup: " << (int) super_block->s_jnl_backup_type << std::endl;
-  os << "First metablock group: " << super_block->s_first_meta_bg << std::endl;
-  os << "When the filesystem was created: " << super_block->s_mkfs_time << std::endl;
-//  os << "Backup of the journal inode: " << super_block->s_jnl_blocks << std::endl;
-//  os << "Padding to the end of the block: " << super_block->s_reserved << std::endl;
+  os << "Default hash version to use: " << (int) s_block->s_def_hash_version << std::endl;
+  os << "Default type of journal backup: " << (int) s_block->s_jnl_backup_type << std::endl;
+  os << "First metablock group: " << s_block->s_first_meta_bg << std::endl;
+  os << "When the filesystem was created: " << s_block->s_mkfs_time << std::endl;
+//  os << "Backup of the journal inode: " << s_block->s_jnl_blocks << std::endl;
+//  os << "Padding to the end of the block: " << s_block->s_reserved << std::endl;
 
 
   os << "Compatible feature set:";
-  if ((super_block->s_feature_compat & EXT2_FEATURE_COMPAT_DIR_PREALLOC))
+  if ((s_block->s_feature_compat & EXT2_FEATURE_COMPAT_DIR_PREALLOC))
     os << " DIR_PREALLOC";
-  if ((super_block->s_feature_compat & EXT2_FEATURE_COMPAT_IMAGIC_INODES))
+  if ((s_block->s_feature_compat & EXT2_FEATURE_COMPAT_IMAGIC_INODES))
     os << " IMAGIC_INODES";
-  if ((super_block->s_feature_compat & EXT3_FEATURE_COMPAT_HAS_JOURNAL))
+  if ((s_block->s_feature_compat & EXT3_FEATURE_COMPAT_HAS_JOURNAL))
     os << " HAS_JOURNAL";
-  if ((super_block->s_feature_compat & EXT2_FEATURE_COMPAT_EXT_ATTR))
+  if ((s_block->s_feature_compat & EXT2_FEATURE_COMPAT_EXT_ATTR))
     os << " EXT_ATTR";
-  if ((super_block->s_feature_compat & EXT2_FEATURE_COMPAT_RESIZE_INODE))
+  if ((s_block->s_feature_compat & EXT2_FEATURE_COMPAT_RESIZE_INODE))
     os << " RESIZE_INODE";
-  if ((super_block->s_feature_compat & EXT2_FEATURE_COMPAT_DIR_INDEX))
+  if ((s_block->s_feature_compat & EXT2_FEATURE_COMPAT_DIR_INDEX))
     os << " DIR_INDEX";
   os << std::endl;
 
   os << "Incompatible feature set:";
-  if ((super_block->s_feature_incompat & EXT2_FEATURE_INCOMPAT_COMPRESSION))
+  if ((s_block->s_feature_incompat & EXT2_FEATURE_INCOMPAT_COMPRESSION))
     os << " COMPRESSION";
-  if ((super_block->s_feature_incompat & EXT2_FEATURE_INCOMPAT_FILETYPE))
+  if ((s_block->s_feature_incompat & EXT2_FEATURE_INCOMPAT_FILETYPE))
     os << " FILETYPE";
-  if ((super_block->s_feature_incompat & EXT3_FEATURE_INCOMPAT_RECOVER))
+  if ((s_block->s_feature_incompat & EXT3_FEATURE_INCOMPAT_RECOVER))
     os << " RECOVER";
-  if ((super_block->s_feature_incompat & EXT3_FEATURE_INCOMPAT_JOURNAL_DEV))
+  if ((s_block->s_feature_incompat & EXT3_FEATURE_INCOMPAT_JOURNAL_DEV))
     os << " JOURNAL_DEV";
 
-  if ((super_block->s_feature_incompat & EXT2_FEATURE_INCOMPAT_META_BG))
+  if ((s_block->s_feature_incompat & EXT2_FEATURE_INCOMPAT_META_BG))
     os << " META_BG";
   os << std::endl;
 
   os << "Read only compatible feature set:";
-  if ((super_block->s_feature_ro_compat & EXT2_FEATURE_RO_COMPAT_SPARSE_SUPER))
+  if ((s_block->s_feature_ro_compat & EXT2_FEATURE_RO_COMPAT_SPARSE_SUPER))
     os << " SPARSE_SUPER";
-  if ((super_block->s_feature_ro_compat & EXT2_FEATURE_RO_COMPAT_LARGE_FILE))
+  if ((s_block->s_feature_ro_compat & EXT2_FEATURE_RO_COMPAT_LARGE_FILE))
     os << " LARGE_FILE";
-//  if ((super_block->s_feature_ro_compat & EXT2_FEATURE_RO_COMPAT_BTREE_DIR))
+//  if ((s_block->s_feature_ro_compat & EXT2_FEATURE_RO_COMPAT_BTREE_DIR))
 //    os << " BTREE_DIR";
   os << std::endl;
 
