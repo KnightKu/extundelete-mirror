@@ -435,8 +435,6 @@ void print_usage(std::ostream& os)
 
 
 // Main program implementation
-#define EU_DECODE_FAIL  1
-#define EU_STOP         2
 int main(int argc, char* argv[])
 {
 	struct stat statbuf;
@@ -817,7 +815,6 @@ int decode_options(int& argc, char**& argv)
 }
 
 
-#define EU_FS_ERR  1
 int load_super_block(ext2_filsys fs)
 {
 	// Frequently used constants.
@@ -925,7 +922,6 @@ void print_directory_inode(ext2_filsys fs, struct ext2_inode *inode,
 		struct dir_context ctx = {0,
 			DIRENT_FLAG_INCLUDE_REMOVED, buf, print_entry, fs, 0};
 		extundelete_process_dir_block(fs, &blocknr, 0, 0, 0, &ctx);
-
 	}
 	delete[] buf;
 }
@@ -1212,7 +1208,7 @@ int pair_names_with(ext2_filsys fs, ext2_filsys jfs, std::vector<ext2_ino_t>& in
 	return 0;
 }
 
-void restore_directory(ext2_filsys fs, ext2_filsys jfs, ext2_ino_t dirino, std::string dirname)
+int restore_directory(ext2_filsys fs, ext2_filsys jfs, ext2_ino_t dirino, std::string dirname)
 {
 	std::vector<ext2_ino_t> recoverable_inodes;
 	std::map<ext2_ino_t, uint32_t> deleted_inodes_map;
@@ -1325,9 +1321,9 @@ void restore_directory(ext2_filsys fs, ext2_filsys jfs, ext2_ino_t dirino, std::
 	else if(rsize == recoverable_inodes.size() ) {
 		std::cout << "No files were undeleted." << std::endl;
 	}
+	return 0;
 }
 
-#define EU_EXAMINE_FAIL 1
 int examine_fs(ext2_filsys fs)
 {
 	errcode_t errcode;
@@ -1534,14 +1530,15 @@ int examine_fs(ext2_filsys fs)
 	}
 	// Handle --dump-names and --restore-all
 	if (commandline_restore_all || commandline_dump_names)
-		restore_directory (fs, jfs, EXT2_ROOT_INO, "");
+		errcode = restore_directory (fs, jfs, EXT2_ROOT_INO, "");
 	// Handle --restore-directory
 	if (!commandline_restore_directory.empty()) {
-		restore_file (fs, jfs, commandline_restore_directory.c_str());
+		errcode = restore_file (fs, jfs, commandline_restore_directory.c_str());
 	}
 	// Handle --restore-file
-	if (!commandline_restore_file.empty())
-		restore_file(fs, jfs, commandline_restore_file);
+	if (!commandline_restore_file.empty()) {
+		errcode = restore_file(fs, jfs, commandline_restore_file);
+	}
 	// Handle --restore-files
 	if (!commandline_restore_files.empty()) {
 		std::ifstream infile;
@@ -1554,7 +1551,7 @@ int examine_fs(ext2_filsys fs)
 		while (infile.good()) {
 			infile.getline (name, namelen);
 			if(strlen(name) > 0)
-				restore_file (fs, jfs, std::string(name) );
+				errcode = restore_file (fs, jfs, std::string(name) );
 		}
 		infile.close();
 		delete[] name;
@@ -2014,7 +2011,7 @@ if not found, look through all revoked fs blocks
 if found entry, assign a new number to ino and new curr_part
 if found entry, goto beginsearch with new ino and curr_part
 */
-void restore_file(ext2_filsys fs, ext2_filsys jfs, const std::string& fname)
+int restore_file(ext2_filsys fs, ext2_filsys jfs, const std::string& fname)
 {
 	// Look through the directory structure to get as close as possible to the file.
 	ext2_ino_t ino = EXT2_ROOT_INO;
@@ -2059,8 +2056,8 @@ void restore_file(ext2_filsys fs, ext2_filsys jfs, const std::string& fname)
 	// We are guaranteed that the inode is allocated here
 
 	if (!commandline_restore_directory.empty() && curr_part == "" ) {
-		restore_directory(fs, jfs, ino, fname);
-		return;
+		retval = restore_directory(fs, jfs, ino, fname);
+		return retval;
 	}
 	// Look for the next part in the directory blocks specified by the inode ino
 	//int bmapflags = 0;
@@ -2250,16 +2247,18 @@ void restore_file(ext2_filsys fs, ext2_filsys jfs, const std::string& fname)
 	delete[] buf2;
 
 	if (!commandline_restore_directory.empty() && curr_part == "" ) {
-		restore_directory(fs, jfs, ino, fname);
-		return;
+		retval = restore_directory(fs, jfs, ino, fname);
+		return retval;
 	}
 	if(curr_part == "") {
 		restore_inode(fs, jfs, ino, fname);
+		return 0;
 	}
 	else {
 		std::cout << "Failed to restore file " << fname << std::endl;
 		std::cout << "Could not find correct inode number past inode " << ino
 		<< "." << std::endl;
+		return EU_RESTORE_FAIL;
 	}
 }
 
@@ -2382,7 +2381,6 @@ void sanitize_file_name(std::string& str )
 
 }
 
-#define EU_RESTORE_FAIL 1
 int restore_inode(ext2_filsys fs, ext2_filsys jfs, ext2_ino_t ino, const std::string& dname)
 {
 	errcode_t retval;

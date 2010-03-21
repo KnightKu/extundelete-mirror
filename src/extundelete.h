@@ -17,6 +17,13 @@
 
 #define SEARCH_JOURNAL 1
 
+#define EU_RESTORE_FAIL 1
+#define EU_DECODE_FAIL  1
+#define EU_STOP         2
+#define EU_FS_ERR  1
+#define EU_EXAMINE_FAIL 1
+#define EU_RESTORE_FAIL 1
+
 // Global enumerations and structs
 
 /*
@@ -74,11 +81,13 @@ int decode_options(int& argc, char**& argv);
 int examine_fs(ext2_filsys fs);
 int load_super_block(ext2_filsys fs);
 int init_journal(ext2_filsys fs, ext2_filsys jfs, journal_superblock_t *jsb);
-void restore_file(ext2_filsys fs, ext2_filsys jfs, const std::string& fname);
+int restore_file(ext2_filsys fs, ext2_filsys jfs, const std::string& fname);
 int restore_inode(ext2_filsys fs, ext2_filsys jfs, ext2_ino_t ino, const std::string& dname);
 void parse_inode_block(struct ext2_inode *inode, const char *buf, ext2_ino_t ino);
-errcode_t recover_inode(ext2_filsys fs, ext2_filsys jfs, ext2_ino_t ino, struct ext2_inode *&inode, int ver);
-int pair_names_with(ext2_filsys fs, ext2_filsys jfs, std::vector<ext2_ino_t>& inolist, ext2_ino_t ino, std::string dirname, int del, std::vector<ext2_ino_t>& parent_inos);
+errcode_t recover_inode(ext2_filsys fs, ext2_filsys jfs, ext2_ino_t ino,
+		struct ext2_inode *&inode, int ver);
+int pair_names_with(ext2_filsys fs, ext2_filsys jfs, std::vector<ext2_ino_t>& inolist,
+		ext2_ino_t ino, std::string dirname, int del, std::vector<ext2_ino_t>& parent_inos);
 int read_journal_block(ext2_filsys fs, blk_t n, char *buf);
 
 // From insertionops.cc
