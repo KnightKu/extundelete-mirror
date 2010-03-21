@@ -13,29 +13,29 @@
 
 // Global variables
 #ifndef VERSION
-std::string VERSION="0.1.9";
+#define VERSION "0.1.9";
 #endif
-std::string progname;
-std::string outputdir = "RECOVERED_FILES/";
+extern std::string progname;
+extern std::string outputdir;
 
 // The superblock.
-ext2_super_block super_block;
+extern ext2_super_block super_block;
 // Frequently used constant values from the superblock.
-uint32_t groups_;
-uint32_t block_size_;
-uint32_t block_size_log_;
-uint32_t inodes_per_group_;
-uint16_t inode_size_;
-uint32_t inode_count_;
-uint32_t block_count_;
-ext2_group_desc* group_descriptor_table;
+extern uint32_t groups_;
+extern uint32_t block_size_;
+extern uint32_t block_size_log_;
+extern uint32_t inodes_per_group_;
+extern uint16_t inode_size_;
+extern uint32_t inode_count_;
+extern uint32_t block_count_;
+extern ext2_group_desc* group_descriptor_table;
 
 // Information from journal
 typedef std::vector<blk_t>  block_list_t;
-std::vector<uint32_t> tag_seq;
-block_list_t tag_jblk;
-block_list_t tag_fsblk;
-block_list_t rvk_block;
+extern std::vector<uint32_t> tag_seq;
+extern block_list_t tag_jblk;
+extern block_list_t tag_fsblk;
+extern block_list_t rvk_block;
 /*
  * journ_map is meant to contain the
  * (file system block number, (journal block number, sequence number)),
@@ -45,32 +45,32 @@ block_list_t rvk_block;
 typedef std::pair<blk_t, uint32_t>   block_pair_t;
 typedef std::pair<blk_t, block_pair_t>  journal_map_item;
 typedef std::multimap<blk_t, block_pair_t>  journal_map_t;
-journal_map_t journ_map;
+extern journal_map_t journ_map;
 
 // Commandline options.
-bool commandline_superblock = false;
-dgrp_t commandline_group = 0;
-int commandline_inode_to_block = -1;
-int commandline_inode = -1;
-__s64 commandline_block = -1;
-__s64 commandline_journal_block = -1;
-int commandline_journal_transaction = -1;
-bool commandline_journal = false;
-bool commandline_dump_names = false;
-bool commandline_directory = false;
-long commandline_before = LONG_MAX;
-long commandline_after = 0;
-bool commandline_action = false;
-std::string commandline_histogram;
-int commandline_show_journal_inodes = -1;
-std::string commandline_restore_file;
-std::string commandline_restore_files;
-std::string commandline_restore_directory;
-std::string commandline_restore_inode;
-bool commandline_restore_all = false;
-bool commandline_show_hardlinks = false;
-std::string commandline_journal_filename;
-blk_t commandline_backup_superblock = 0;
-blk_t commandline_block_size = 0;
+extern bool commandline_superblock;
+extern dgrp_t commandline_group;
+extern int commandline_inode_to_block;
+extern int commandline_inode;
+extern __s64 commandline_block;
+extern __s64 commandline_journal_block;
+extern int commandline_journal_transaction;
+extern bool commandline_journal;
+extern bool commandline_dump_names;
+extern bool commandline_directory;
+extern long commandline_before;
+extern long commandline_after;
+extern bool commandline_action;
+extern std::string commandline_histogram;
+extern int commandline_show_journal_inodes;
+extern std::string commandline_restore_file;
+extern std::string commandline_restore_files;
+extern std::string commandline_restore_directory;
+extern std::string commandline_restore_inode;
+extern bool commandline_restore_all;
+extern bool commandline_show_hardlinks;
+extern std::string commandline_journal_filename;
+extern blk_t commandline_backup_superblock;
+extern blk_t commandline_block_size;
 
 #endif //EXTUNDELETEPRIV_H
