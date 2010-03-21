@@ -501,7 +501,24 @@ int main(int argc, char* argv[])
 
 	// Read constants from super block.
 	errcode = load_super_block (fs);
-	if (errcode) {
+	if (errcode == EU_FS_RECOVER) {
+		char ans;
+		std::cin.width (1);
+		do {
+			std::cout <<
+			"If you decide to continue, extundelete may overwrite some of the deleted"
+			<< std::endl <<
+			"files and make recovering those files impossible.  You should unmount the"
+			<< std::endl <<
+			"file system and check it with fsck before using extundelete."
+			<< std::endl <<
+			"Would you like to continue? (y/n) " << std::endl;
+			std::cin >> ans;
+			if (ans == 'n')
+				return 0;
+		} while (ans != 'y');
+	}
+	else if (errcode) {
 		std::cout << "Error: bad filesystem specified." << std::endl;
 		return errcode;
 	}
@@ -817,6 +834,7 @@ int decode_options(int& argc, char**& argv)
 
 int load_super_block(ext2_filsys fs)
 {
+	int errcode = 0;
 	// Frequently used constants.
 	super_block = *(fs->super);
 	groups_ = fs->super->s_inodes_count / fs->super->s_inodes_per_group;
@@ -871,10 +889,11 @@ int load_super_block(ext2_filsys fs)
 		std::cout << "WARNING: EXT3_FEATURE_INCOMPAT_RECOVER is set.\n"
 		"The partition should be unmounted to undelete any files without further data loss.\n"
 		"If the partition is not currently mounted, this message indicates \n"
-		"it was improperly unmounted, and should be run through fsck before continuing.\n";
+		"it was improperly unmounted, and you should run fsck before continuing.\n";
+		errcode = EU_FS_RECOVER;
 	}
 	if ((super_block.s_feature_incompat & EXT3_FEATURE_INCOMPAT_JOURNAL_DEV))
-		std::cout << "WARNING: extundelete isn't able to read from an external journal yet.\n";
+		std::cout << "WARNING: extundelete may have problems reading from an external journal.\n";
 
 	// Initialize group_descriptor_table.
 	//FIXME: may need to change to be compatible with newer file systems
@@ -884,7 +903,7 @@ int load_super_block(ext2_filsys fs)
 	{
 		group_descriptor_table[n] = fs->group_desc[n];
 	}
-	return 0;
+	return errcode;
 }
 
 int print_entry(ext2_ino_t /*dir*/, int entry,
