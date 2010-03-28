@@ -137,9 +137,7 @@ uint32_t ext2fs_get_generic_bitmap_end(ext2fs_generic_bitmap bitmap)
 // extern variable definitions
 std::string progname;
 ext2_super_block super_block;
-uint32_t groups_;
 uint32_t block_size_;
-uint32_t block_size_log_;
 uint32_t inodes_per_group_;
 uint16_t inode_size_;
 uint32_t inode_count_;
@@ -880,9 +878,9 @@ int load_super_block(ext2_filsys fs)
 	int errcode = 0;
 	// Frequently used constants.
 	super_block = *(fs->super);
-	groups_ = fs->super->s_inodes_count / fs->super->s_inodes_per_group;
+	uint32_t groups_ = fs->super->s_inodes_count / fs->super->s_inodes_per_group;
 	block_size_ = EXT2_BLOCK_SIZE(fs->super);
-	block_size_log_ = fs->super->s_log_block_size;
+	assert (fs->super->s_log_block_size == block_size);
 	inodes_per_group_ = fs->super->s_inodes_per_group;
 	inode_size_ = fs->super->s_inode_size;
 	inode_count_ = fs->super->s_inodes_count;
@@ -1407,7 +1405,8 @@ int examine_fs(ext2_filsys fs)
 		errcode = ext2fs_read_inode_bitmap(fs);
 		errcode |= ext2fs_read_block_bitmap(fs);
 		if (errcode) return errcode;
-		std::cout << groups_ << " groups loaded." << std::endl;
+		std::cout << fs->super->s_inodes_count / fs->super->s_inodes_per_group
+		<< " groups loaded." << std::endl;
 	}
 
 	// Check commandline options against superblock bounds.
