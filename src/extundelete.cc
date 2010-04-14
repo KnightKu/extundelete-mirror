@@ -880,7 +880,7 @@ int load_super_block(ext2_filsys fs)
 	super_block = *(fs->super);
 	uint32_t groups_ = fs->super->s_inodes_count / fs->super->s_inodes_per_group;
 	block_size_ = EXT2_BLOCK_SIZE(fs->super);
-	assert (fs->super->s_log_block_size == block_size);
+	assert (fs->super->s_log_block_size == block_size_);
 	inodes_per_group_ = fs->super->s_inodes_per_group;
 	inode_size_ = fs->super->s_inode_size;
 	inode_count_ = fs->super->s_inodes_count;
@@ -1004,7 +1004,7 @@ static void dump_hex_to(std::ostream& os, char const* buf, size_t size)
 		{
 			char c = buf[addr + offset];
 			if (!std::isprint(c))
-		c = '.';
+				c = '.';
 			os << c;
 		}
 		os << std::endl;
@@ -1268,6 +1268,9 @@ int pair_names_with(ext2_filsys fs, ext2_filsys jfs, std::vector<ext2_ino_t>& in
 	return 0;
 }
 
+/* FIXME: Add a function pointer parameter; should pass a function that displays
+ * the status messages rather than sending them to stdout.
+*/
 int restore_directory(ext2_filsys fs, ext2_filsys jfs, ext2_ino_t dirino, std::string dirname)
 {
 	std::vector<ext2_ino_t> recoverable_inodes;

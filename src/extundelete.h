@@ -23,7 +23,6 @@
 #define EU_FS_ERR     1
 #define EU_FS_RECOVER 2
 #define EU_EXAMINE_FAIL 1
-#define EU_RESTORE_FAIL 1
 // Global enumerations and structs
 
 /*
