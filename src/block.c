@@ -75,43 +75,46 @@ struct ext2_extent_handle {
         struct extent_path      *path;
 };
 
-/* Leave the inode intact because it was allocated by new (C++) */
-void local_ext2fs_extent_free(ext2_extent_handle_t handle)
+/* This function is a local copy of ext2fs_extent_open2()
+ * from e2fsprogs-1.41.10
+ */
+errcode_t local_ext2fs_extent_open(ext2_filsys fs, ext2_ino_t ino,
+                                    struct ext2_inode *inode,
+                                    ext2_extent_handle_t *ret_handle)
 {
-        int                     i;
-
-        if (!handle)
-                return;
-
-        /*if (handle->inode)
-                ext2fs_free_mem(&handle->inode); */
-        if (handle->path) {
-                for (i=1; i < handle->max_depth; i++) {
-                        if (handle->path[i].buf)
-                                ext2fs_free_mem(&handle->path[i].buf);
-                }
-                ext2fs_free_mem(&handle->path);
-        }
-        ext2fs_free_mem(&handle);
-}
-
-errcode_t local_ext2fs_extent_open(ext2_filsys fs, struct ext2_inode inode,
-                          ext2_extent_handle_t *ret_handle) {
-
         struct ext2_extent_handle       *handle;
-        struct ext3_extent_header       *eh;
-        int i;
         errcode_t                       retval;
+        int                             i;
+        struct ext3_extent_header       *eh;
+
+        EXT2_CHECK_MAGIC(fs, EXT2_ET_MAGIC_EXT2FS_FILSYS);
+
+        if (!inode)
+                if ((ino == 0) || (ino > fs->super->s_inodes_count))
+                        return EXT2_ET_BAD_INODE_NUM;
+
         retval = ext2fs_get_mem(sizeof(struct ext2_extent_handle), &handle);
         if (retval)
                 return retval;
         memset(handle, 0, sizeof(struct ext2_extent_handle));
 
-        handle->ino = 0;
-        handle->fs = fs;
-        handle->inode = &inode;
+        retval = ext2fs_get_mem(sizeof(struct ext2_inode), &handle->inode);
+        if (retval)
+                goto errout;
 
+        handle->ino = ino;
+        handle->fs = fs;
+
+        if (inode) {
+                memcpy(handle->inode, inode, sizeof(struct ext2_inode));
+        }
+        else {
+                retval = ext2fs_read_inode(fs, ino, handle->inode);
+                if (retval)
+                        goto errout;
+        }
         eh = (struct ext3_extent_header *) &handle->inode->i_block[0];
+
         for (i=0; i < EXT2_N_BLOCKS; i++)
                 if (handle->inode->i_block[i])
                         break;
@@ -125,6 +128,14 @@ errcode_t local_ext2fs_extent_open(ext2_filsys fs, struct ext2_inode inode,
                 handle->inode->i_flags |= EXT4_EXTENTS_FL;
         }
 
+        if (!(handle->inode->i_flags & EXT4_EXTENTS_FL)) {
+                retval = EXT2_ET_INODE_NOT_EXTENT;
+                goto errout;
+        }
+
+        retval = ext2fs_extent_header_verify(eh, sizeof(handle->inode->i_block));
+        if (retval)
+                goto errout;
 
         handle->max_depth = ext2fs_le16_to_cpu(eh->eh_depth);
         handle->type = ext2fs_le16_to_cpu(eh->eh_magic);
@@ -149,10 +160,12 @@ errcode_t local_ext2fs_extent_open(ext2_filsys fs, struct ext2_inode inode,
         handle->magic = EXT2_ET_MAGIC_EXTENT_HANDLE;
 
         *ret_handle = handle;
-
         return 0;
-}
 
+errout:
+        ext2fs_extent_free(handle);
+        return retval;
+}
 
 
 
@@ -488,7 +501,7 @@ errcode_t local_block_iterate3(ext2_filsys fs,
 		int			uninit;
 		unsigned int		j;
 
-		ctx.errcode = local_ext2fs_extent_open(fs, inode, &handle);
+		ctx.errcode = local_ext2fs_extent_open(fs, 0, &inode, &handle);
 		if (ctx.errcode)
 			goto abort_exit;
 
@@ -568,7 +581,7 @@ errcode_t local_block_iterate3(ext2_filsys fs,
 		}
 
 	extent_errout:
-		local_ext2fs_extent_free(handle);
+		ext2fs_extent_free(handle);
 		ret |= BLOCK_ERROR | BLOCK_ABORT;
 		goto errout;
 	}
