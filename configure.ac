@@ -53,6 +53,8 @@ AC_SUBST([EU_OPTXXFLAGS])
 AC_CHECK_LIB([ext2fs], [ext2fs_bmap], [],[
            AC_MSG_ERROR([Can't find ext2fs library])] )
 AC_CHECK_FUNCS([ext2fs_get_generic_bitmap_start])
+AC_CHECK_LIB([com_err], [com_err], [],[
+           AC_MSG_ERROR([Can't find com_err library])] )
 
 # Checks for header files.
 AC_HEADER_STDC
