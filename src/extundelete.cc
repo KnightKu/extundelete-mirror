@@ -880,7 +880,6 @@ int load_super_block(ext2_filsys fs)
 	super_block = *(fs->super);
 	uint32_t groups_ = fs->super->s_inodes_count / fs->super->s_inodes_per_group;
 	block_size_ = EXT2_BLOCK_SIZE(fs->super);
-	assert (fs->super->s_log_block_size == block_size_);
 	inodes_per_group_ = fs->super->s_inodes_per_group;
 	inode_size_ = fs->super->s_inode_size;
 	inode_count_ = fs->super->s_inodes_count;
