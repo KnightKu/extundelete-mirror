@@ -1,6 +1,6 @@
 SUBDIRS = src
 AM_MAKEFLAGS = -s
-EXTRA_DIST = LICENSE README testing.txt autogen.sh
+EXTRA_DIST = LICENSE README autogen.sh
 
 profile:
 	$(MAKE) RECURSIVE_TARGETS=profile-recursive $(AM_MAKEFLAGS) $(@:profile=profile-recursive)

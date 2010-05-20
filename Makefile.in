@@ -154,7 +154,7 @@ sysconfdir = @sysconfdir@
 target_alias = @target_alias@
 SUBDIRS = src
 AM_MAKEFLAGS = -s
-EXTRA_DIST = LICENSE README testing.txt autogen.sh
+EXTRA_DIST = LICENSE README autogen.sh
 all: config.h
 	$(MAKE) $(AM_MAKEFLAGS) all-recursive
 
