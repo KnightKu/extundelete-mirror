@@ -2608,7 +2608,8 @@ void parse_inode_block(struct ext2_inode *inode, const char *buf, ext2_ino_t ino
 	//inode->i_frag = inodebuf[item*56];
 	//inode->i_fsize = inodebuf[item*56 + sizeof(inode->i_frag)];
 	// Gap in useful info of 16 bits here.
-	inode->i_uid_high = le16_to_cpu( (uint16_t *) &inodebuf[item*58] );
-	inode->i_gid_high = le16_to_cpu( (uint16_t *) &inodebuf[item*60] );
-	inode->i_reserved2 = le32_to_cpu( (uint32_t *) &inodebuf[item*62] );
+  //FIXME: need to change behavior depending on the fs operating system
+	inode->osd2.linux2.l_i_uid_high = le16_to_cpu( (uint16_t *) &inodebuf[item*58] );
+	inode->osd2.linux2.l_i_gid_high = le16_to_cpu( (uint16_t *) &inodebuf[item*60] );
+	inode->osd2.linux2.l_i_reserved2 = le32_to_cpu( (uint32_t *) &inodebuf[item*62] );
 }
