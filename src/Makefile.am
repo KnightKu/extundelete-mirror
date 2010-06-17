@@ -4,7 +4,7 @@ bin_PROGRAMS = extundelete
 
 extundelete_CFLAGS = @EU_CFLAGS@ @EU_WCFLAGS@ $(AM_CFLAGS)
 extundelete_CXXFLAGS = @EU_CXXFLAGS@ @EU_WCXXFLAGS@ $(AM_CFLAGS)
-extundelete_SOURCES = extundelete.cc  block.c  insertionops.cc  block.h  extundelete.h  extundelete-priv.h  jfs_compat.h  kernel-jbd.h
+extundelete_SOURCES = extundelete.cc  cli.cc block.c  insertionops.cc  block.h  extundelete.h  extundelete-priv.h  jfs_compat.h  kernel-jbd.h
 
 EXTRA_PROGRAMS = extundelete-prof  extundelete-jdebug  extundelete-nodebug
 

@@ -76,18 +76,14 @@ void print_version(void);
 void journal_header_to_cpu(char *);
 
 // Main implementation function declarations
-int decode_options(int& argc, char**& argv);
-int examine_fs(ext2_filsys fs);
 int load_super_block(ext2_filsys fs);
 int init_journal(ext2_filsys fs, ext2_filsys jfs, journal_superblock_t *jsb);
 int restore_file(ext2_filsys fs, ext2_filsys jfs, const std::string& fname);
 int restore_inode(ext2_filsys fs, ext2_filsys jfs, ext2_ino_t ino, const std::string& dname);
-void parse_inode_block(struct ext2_inode *inode, const char *buf, ext2_ino_t ino);
-errcode_t recover_inode(ext2_filsys fs, ext2_filsys jfs, ext2_ino_t ino,
-		struct ext2_inode *&inode, int ver);
-int pair_names_with(ext2_filsys fs, ext2_filsys jfs, std::vector<ext2_ino_t>& inolist,
-		ext2_ino_t ino, std::string dirname, int del, std::vector<ext2_ino_t>& parent_inos);
 int read_journal_block(ext2_filsys fs, blk_t n, char *buf);
+errcode_t read_block(ext2_filsys fs, blk_t *blocknr, e2_blkcnt_t blockcnt,
+		blk_t /*ref_blk*/, int /*ref_offset*/, void *buf);
+int restore_directory(ext2_filsys fs, ext2_filsys jfs, ext2_ino_t dirino, std::string dirname);
 
 // From insertionops.cc
 std::ostream& operator<<(std::ostream& os, const ext2_super_block* const s_block);
@@ -96,6 +92,22 @@ std::ostream& operator<<(std::ostream& os, const ext2_inode& inode);
 std::ostream& operator<<(std::ostream& os, const ext2_group_desc& group_desc);
 std::ostream& operator<<(std::ostream& os, const journal_revoke_header_t journal_revoke_header);
 std::ostream& operator<<(std::ostream& os, journal_superblock_t const& journal_super_block);
+
+
+//Temporary declarations present to ease cleanup
+extern std::string commandline_restore_directory;
+extern long commandline_before;
+extern long commandline_after;
+void journal_superblock_to_cpu(char *jsb);
+void classify_block(ext2_filsys fs, blk_t blocknr, dgrp_t group);
+void print_directory_inode(ext2_filsys fs, struct ext2_inode *inode,
+		ext2_ino_t ino);
+void dump_hex_to(std::ostream& os, char const* buf, size_t size);
+void parse_inode_block(struct ext2_inode *inode, const char *buf, ext2_ino_t ino);
+errcode_t recover_inode(ext2_filsys fs, ext2_filsys jfs, ext2_ino_t ino,
+		struct ext2_inode *&inode, int ver);
+int pair_names_with(ext2_filsys fs, ext2_filsys jfs, std::vector<ext2_ino_t>& inolist,
+		ext2_ino_t ino, std::string dirname, int del, std::vector<ext2_ino_t>& parent_inos);
 
 
 #endif //EXTUNDELETE_H

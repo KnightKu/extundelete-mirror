@@ -51,22 +51,26 @@ am__installdirs = "$(DESTDIR)$(bindir)"
 binPROGRAMS_INSTALL = $(INSTALL_PROGRAM)
 PROGRAMS = $(bin_PROGRAMS)
 am_extundelete_OBJECTS = extundelete-extundelete.$(OBJEXT) \
-	extundelete-block.$(OBJEXT) extundelete-insertionops.$(OBJEXT)
+	extundelete-cli.$(OBJEXT) extundelete-block.$(OBJEXT) \
+	extundelete-insertionops.$(OBJEXT)
 extundelete_OBJECTS = $(am_extundelete_OBJECTS)
 extundelete_LDADD = $(LDADD)
 am__objects_1 = extundelete_jdebug-extundelete.$(OBJEXT) \
+	extundelete_jdebug-cli.$(OBJEXT) \
 	extundelete_jdebug-block.$(OBJEXT) \
 	extundelete_jdebug-insertionops.$(OBJEXT)
 am_extundelete_jdebug_OBJECTS = $(am__objects_1)
 extundelete_jdebug_OBJECTS = $(am_extundelete_jdebug_OBJECTS)
 extundelete_jdebug_LDADD = $(LDADD)
 am__objects_2 = extundelete_nodebug-extundelete.$(OBJEXT) \
+	extundelete_nodebug-cli.$(OBJEXT) \
 	extundelete_nodebug-block.$(OBJEXT) \
 	extundelete_nodebug-insertionops.$(OBJEXT)
 am_extundelete_nodebug_OBJECTS = $(am__objects_2)
 extundelete_nodebug_OBJECTS = $(am_extundelete_nodebug_OBJECTS)
 extundelete_nodebug_LDADD = $(LDADD)
 am__objects_3 = extundelete_prof-extundelete.$(OBJEXT) \
+	extundelete_prof-cli.$(OBJEXT) \
 	extundelete_prof-block.$(OBJEXT) \
 	extundelete_prof-insertionops.$(OBJEXT)
 am_extundelete_prof_OBJECTS = $(am__objects_3)
@@ -177,7 +181,7 @@ target_alias = @target_alias@
 AM_CFLAGS = -DPROG="\"$(PACKAGE)\"" -DVERSION="\"$(VERSION)\""
 extundelete_CFLAGS = @EU_CFLAGS@ @EU_WCFLAGS@ $(AM_CFLAGS)
 extundelete_CXXFLAGS = @EU_CXXFLAGS@ @EU_WCXXFLAGS@ $(AM_CFLAGS)
-extundelete_SOURCES = extundelete.cc  block.c  insertionops.cc  block.h  extundelete.h  extundelete-priv.h  jfs_compat.h  kernel-jbd.h
+extundelete_SOURCES = extundelete.cc  cli.cc block.c  insertionops.cc  block.h  extundelete.h  extundelete-priv.h  jfs_compat.h  kernel-jbd.h
 extundelete_prof_CFLAGS = $(extundelete_CFLAGS) @EU_CPROF@
 extundelete_prof_CXXFLAGS = $(extundelete_CXXFLAGS) @EU_CXXPROF@
 extundelete_prof_SOURCES = $(extundelete_SOURCES)
@@ -264,15 +268,19 @@ distclean-compile:
 	-rm -f *.tab.c
 
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/extundelete-block.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/extundelete-cli.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/extundelete-extundelete.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/extundelete-insertionops.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/extundelete_jdebug-block.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/extundelete_jdebug-cli.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/extundelete_jdebug-extundelete.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/extundelete_jdebug-insertionops.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/extundelete_nodebug-block.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/extundelete_nodebug-cli.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/extundelete_nodebug-extundelete.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/extundelete_nodebug-insertionops.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/extundelete_prof-block.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/extundelete_prof-cli.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/extundelete_prof-extundelete.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/extundelete_prof-insertionops.Po@am__quote@
 
@@ -374,6 +382,20 @@ extundelete-extundelete.obj: extundelete.cc
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(extundelete_CXXFLAGS) $(CXXFLAGS) -c -o extundelete-extundelete.obj `if test -f 'extundelete.cc'; then $(CYGPATH_W) 'extundelete.cc'; else $(CYGPATH_W) '$(srcdir)/extundelete.cc'; fi`
 
+extundelete-cli.o: cli.cc
+@am__fastdepCXX_TRUE@	if $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(extundelete_CXXFLAGS) $(CXXFLAGS) -MT extundelete-cli.o -MD -MP -MF "$(DEPDIR)/extundelete-cli.Tpo" -c -o extundelete-cli.o `test -f 'cli.cc' || echo '$(srcdir)/'`cli.cc; \
+@am__fastdepCXX_TRUE@	then mv -f "$(DEPDIR)/extundelete-cli.Tpo" "$(DEPDIR)/extundelete-cli.Po"; else rm -f "$(DEPDIR)/extundelete-cli.Tpo"; exit 1; fi
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='cli.cc' object='extundelete-cli.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(extundelete_CXXFLAGS) $(CXXFLAGS) -c -o extundelete-cli.o `test -f 'cli.cc' || echo '$(srcdir)/'`cli.cc
+
+extundelete-cli.obj: cli.cc
+@am__fastdepCXX_TRUE@	if $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(extundelete_CXXFLAGS) $(CXXFLAGS) -MT extundelete-cli.obj -MD -MP -MF "$(DEPDIR)/extundelete-cli.Tpo" -c -o extundelete-cli.obj `if test -f 'cli.cc'; then $(CYGPATH_W) 'cli.cc'; else $(CYGPATH_W) '$(srcdir)/cli.cc'; fi`; \
+@am__fastdepCXX_TRUE@	then mv -f "$(DEPDIR)/extundelete-cli.Tpo" "$(DEPDIR)/extundelete-cli.Po"; else rm -f "$(DEPDIR)/extundelete-cli.Tpo"; exit 1; fi
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='cli.cc' object='extundelete-cli.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(extundelete_CXXFLAGS) $(CXXFLAGS) -c -o extundelete-cli.obj `if test -f 'cli.cc'; then $(CYGPATH_W) 'cli.cc'; else $(CYGPATH_W) '$(srcdir)/cli.cc'; fi`
+
 extundelete-insertionops.o: insertionops.cc
 @am__fastdepCXX_TRUE@	if $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(extundelete_CXXFLAGS) $(CXXFLAGS) -MT extundelete-insertionops.o -MD -MP -MF "$(DEPDIR)/extundelete-insertionops.Tpo" -c -o extundelete-insertionops.o `test -f 'insertionops.cc' || echo '$(srcdir)/'`insertionops.cc; \
 @am__fastdepCXX_TRUE@	then mv -f "$(DEPDIR)/extundelete-insertionops.Tpo" "$(DEPDIR)/extundelete-insertionops.Po"; else rm -f "$(DEPDIR)/extundelete-insertionops.Tpo"; exit 1; fi
@@ -401,6 +423,20 @@ extundelete_jdebug-extundelete.obj: extundelete.cc
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='extundelete.cc' object='extundelete_jdebug-extundelete.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(extundelete_jdebug_CXXFLAGS) $(CXXFLAGS) -c -o extundelete_jdebug-extundelete.obj `if test -f 'extundelete.cc'; then $(CYGPATH_W) 'extundelete.cc'; else $(CYGPATH_W) '$(srcdir)/extundelete.cc'; fi`
+
+extundelete_jdebug-cli.o: cli.cc
+@am__fastdepCXX_TRUE@	if $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(extundelete_jdebug_CXXFLAGS) $(CXXFLAGS) -MT extundelete_jdebug-cli.o -MD -MP -MF "$(DEPDIR)/extundelete_jdebug-cli.Tpo" -c -o extundelete_jdebug-cli.o `test -f 'cli.cc' || echo '$(srcdir)/'`cli.cc; \
+@am__fastdepCXX_TRUE@	then mv -f "$(DEPDIR)/extundelete_jdebug-cli.Tpo" "$(DEPDIR)/extundelete_jdebug-cli.Po"; else rm -f "$(DEPDIR)/extundelete_jdebug-cli.Tpo"; exit 1; fi
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='cli.cc' object='extundelete_jdebug-cli.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(extundelete_jdebug_CXXFLAGS) $(CXXFLAGS) -c -o extundelete_jdebug-cli.o `test -f 'cli.cc' || echo '$(srcdir)/'`cli.cc
+
+extundelete_jdebug-cli.obj: cli.cc
+@am__fastdepCXX_TRUE@	if $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(extundelete_jdebug_CXXFLAGS) $(CXXFLAGS) -MT extundelete_jdebug-cli.obj -MD -MP -MF "$(DEPDIR)/extundelete_jdebug-cli.Tpo" -c -o extundelete_jdebug-cli.obj `if test -f 'cli.cc'; then $(CYGPATH_W) 'cli.cc'; else $(CYGPATH_W) '$(srcdir)/cli.cc'; fi`; \
+@am__fastdepCXX_TRUE@	then mv -f "$(DEPDIR)/extundelete_jdebug-cli.Tpo" "$(DEPDIR)/extundelete_jdebug-cli.Po"; else rm -f "$(DEPDIR)/extundelete_jdebug-cli.Tpo"; exit 1; fi
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='cli.cc' object='extundelete_jdebug-cli.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(extundelete_jdebug_CXXFLAGS) $(CXXFLAGS) -c -o extundelete_jdebug-cli.obj `if test -f 'cli.cc'; then $(CYGPATH_W) 'cli.cc'; else $(CYGPATH_W) '$(srcdir)/cli.cc'; fi`
 
 extundelete_jdebug-insertionops.o: insertionops.cc
 @am__fastdepCXX_TRUE@	if $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(extundelete_jdebug_CXXFLAGS) $(CXXFLAGS) -MT extundelete_jdebug-insertionops.o -MD -MP -MF "$(DEPDIR)/extundelete_jdebug-insertionops.Tpo" -c -o extundelete_jdebug-insertionops.o `test -f 'insertionops.cc' || echo '$(srcdir)/'`insertionops.cc; \
@@ -430,6 +466,20 @@ extundelete_nodebug-extundelete.obj: extundelete.cc
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(extundelete_nodebug_CXXFLAGS) $(CXXFLAGS) -c -o extundelete_nodebug-extundelete.obj `if test -f 'extundelete.cc'; then $(CYGPATH_W) 'extundelete.cc'; else $(CYGPATH_W) '$(srcdir)/extundelete.cc'; fi`
 
+extundelete_nodebug-cli.o: cli.cc
+@am__fastdepCXX_TRUE@	if $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(extundelete_nodebug_CXXFLAGS) $(CXXFLAGS) -MT extundelete_nodebug-cli.o -MD -MP -MF "$(DEPDIR)/extundelete_nodebug-cli.Tpo" -c -o extundelete_nodebug-cli.o `test -f 'cli.cc' || echo '$(srcdir)/'`cli.cc; \
+@am__fastdepCXX_TRUE@	then mv -f "$(DEPDIR)/extundelete_nodebug-cli.Tpo" "$(DEPDIR)/extundelete_nodebug-cli.Po"; else rm -f "$(DEPDIR)/extundelete_nodebug-cli.Tpo"; exit 1; fi
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='cli.cc' object='extundelete_nodebug-cli.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(extundelete_nodebug_CXXFLAGS) $(CXXFLAGS) -c -o extundelete_nodebug-cli.o `test -f 'cli.cc' || echo '$(srcdir)/'`cli.cc
+
+extundelete_nodebug-cli.obj: cli.cc
+@am__fastdepCXX_TRUE@	if $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(extundelete_nodebug_CXXFLAGS) $(CXXFLAGS) -MT extundelete_nodebug-cli.obj -MD -MP -MF "$(DEPDIR)/extundelete_nodebug-cli.Tpo" -c -o extundelete_nodebug-cli.obj `if test -f 'cli.cc'; then $(CYGPATH_W) 'cli.cc'; else $(CYGPATH_W) '$(srcdir)/cli.cc'; fi`; \
+@am__fastdepCXX_TRUE@	then mv -f "$(DEPDIR)/extundelete_nodebug-cli.Tpo" "$(DEPDIR)/extundelete_nodebug-cli.Po"; else rm -f "$(DEPDIR)/extundelete_nodebug-cli.Tpo"; exit 1; fi
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='cli.cc' object='extundelete_nodebug-cli.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(extundelete_nodebug_CXXFLAGS) $(CXXFLAGS) -c -o extundelete_nodebug-cli.obj `if test -f 'cli.cc'; then $(CYGPATH_W) 'cli.cc'; else $(CYGPATH_W) '$(srcdir)/cli.cc'; fi`
+
 extundelete_nodebug-insertionops.o: insertionops.cc
 @am__fastdepCXX_TRUE@	if $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(extundelete_nodebug_CXXFLAGS) $(CXXFLAGS) -MT extundelete_nodebug-insertionops.o -MD -MP -MF "$(DEPDIR)/extundelete_nodebug-insertionops.Tpo" -c -o extundelete_nodebug-insertionops.o `test -f 'insertionops.cc' || echo '$(srcdir)/'`insertionops.cc; \
 @am__fastdepCXX_TRUE@	then mv -f "$(DEPDIR)/extundelete_nodebug-insertionops.Tpo" "$(DEPDIR)/extundelete_nodebug-insertionops.Po"; else rm -f "$(DEPDIR)/extundelete_nodebug-insertionops.Tpo"; exit 1; fi
@@ -457,6 +507,20 @@ extundelete_prof-extundelete.obj: extundelete.cc
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='extundelete.cc' object='extundelete_prof-extundelete.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(extundelete_prof_CXXFLAGS) $(CXXFLAGS) -c -o extundelete_prof-extundelete.obj `if test -f 'extundelete.cc'; then $(CYGPATH_W) 'extundelete.cc'; else $(CYGPATH_W) '$(srcdir)/extundelete.cc'; fi`
+
+extundelete_prof-cli.o: cli.cc
+@am__fastdepCXX_TRUE@	if $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(extundelete_prof_CXXFLAGS) $(CXXFLAGS) -MT extundelete_prof-cli.o -MD -MP -MF "$(DEPDIR)/extundelete_prof-cli.Tpo" -c -o extundelete_prof-cli.o `test -f 'cli.cc' || echo '$(srcdir)/'`cli.cc; \
+@am__fastdepCXX_TRUE@	then mv -f "$(DEPDIR)/extundelete_prof-cli.Tpo" "$(DEPDIR)/extundelete_prof-cli.Po"; else rm -f "$(DEPDIR)/extundelete_prof-cli.Tpo"; exit 1; fi
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='cli.cc' object='extundelete_prof-cli.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(extundelete_prof_CXXFLAGS) $(CXXFLAGS) -c -o extundelete_prof-cli.o `test -f 'cli.cc' || echo '$(srcdir)/'`cli.cc
+
+extundelete_prof-cli.obj: cli.cc
+@am__fastdepCXX_TRUE@	if $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(extundelete_prof_CXXFLAGS) $(CXXFLAGS) -MT extundelete_prof-cli.obj -MD -MP -MF "$(DEPDIR)/extundelete_prof-cli.Tpo" -c -o extundelete_prof-cli.obj `if test -f 'cli.cc'; then $(CYGPATH_W) 'cli.cc'; else $(CYGPATH_W) '$(srcdir)/cli.cc'; fi`; \
+@am__fastdepCXX_TRUE@	then mv -f "$(DEPDIR)/extundelete_prof-cli.Tpo" "$(DEPDIR)/extundelete_prof-cli.Po"; else rm -f "$(DEPDIR)/extundelete_prof-cli.Tpo"; exit 1; fi
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='cli.cc' object='extundelete_prof-cli.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(extundelete_prof_CXXFLAGS) $(CXXFLAGS) -c -o extundelete_prof-cli.obj `if test -f 'cli.cc'; then $(CYGPATH_W) 'cli.cc'; else $(CYGPATH_W) '$(srcdir)/cli.cc'; fi`
 
 extundelete_prof-insertionops.o: insertionops.cc
 @am__fastdepCXX_TRUE@	if $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(extundelete_prof_CXXFLAGS) $(CXXFLAGS) -MT extundelete_prof-insertionops.o -MD -MP -MF "$(DEPDIR)/extundelete_prof-insertionops.Tpo" -c -o extundelete_prof-insertionops.o `test -f 'insertionops.cc' || echo '$(srcdir)/'`insertionops.cc; \
