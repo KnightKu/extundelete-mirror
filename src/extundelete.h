@@ -1,6 +1,6 @@
 /*
  * extundelelete -- An ext3 and ext4 file system undelete tool
- * Main header file for extundelelete
+ * Main header file for extundelete
 */
 
 #ifndef EXTUNDELETE_H
@@ -84,6 +84,11 @@ int read_journal_block(ext2_filsys fs, blk_t n, char *buf);
 errcode_t read_block(ext2_filsys fs, blk_t *blocknr, e2_blkcnt_t blockcnt,
 		blk_t /*ref_blk*/, int /*ref_offset*/, void *buf);
 int restore_directory(ext2_filsys fs, ext2_filsys jfs, ext2_ino_t dirino, std::string dirname);
+int get_journal_fs (ext2_filsys fs, ext2_filsys *jfs, std::string journal_filename);
+int read_journal_superblock (ext2_filsys fs, ext2_filsys jfs,
+		journal_superblock_t *journal_superblock);
+int print_inode(ext2_filsys fs, ext2_ino_t ino);
+void classify_block(ext2_filsys fs, blk_t blocknr, dgrp_t group);
 
 // From insertionops.cc
 std::ostream& operator<<(std::ostream& os, const ext2_super_block* const s_block);
@@ -98,11 +103,7 @@ std::ostream& operator<<(std::ostream& os, journal_superblock_t const& journal_s
 extern std::string commandline_restore_directory;
 extern long commandline_before;
 extern long commandline_after;
-void journal_superblock_to_cpu(char *jsb);
-void classify_block(ext2_filsys fs, blk_t blocknr, dgrp_t group);
-void print_directory_inode(ext2_filsys fs, struct ext2_inode *inode,
-		ext2_ino_t ino);
-void dump_hex_to(std::ostream& os, char const* buf, size_t size);
+
 void parse_inode_block(struct ext2_inode *inode, const char *buf, ext2_ino_t ino);
 errcode_t recover_inode(ext2_filsys fs, ext2_filsys jfs, ext2_ino_t ino,
 		struct ext2_inode *&inode, int ver);

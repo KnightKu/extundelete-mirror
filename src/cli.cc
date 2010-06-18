@@ -89,10 +89,10 @@ int examine_fs(ext2_filsys fs)
 	{
 		if (commandline_inode_to_block != -1)
 			commandline_group = ext2fs_group_of_ino (fs, commandline_inode_to_block);
+
 		std::cout << "Loading filesystem metadata ... " << std::flush;
 		/* Note: for a 1 TB partition with 4k block size, these bitmaps
-		 * require 40 MB memory.
-		 */
+		 * require 40 MB memory. */
 		errcode = ext2fs_read_inode_bitmap(fs);
 		errcode |= ext2fs_read_block_bitmap(fs);
 		if (errcode) return errcode;
@@ -144,24 +144,8 @@ int examine_fs(ext2_filsys fs)
 	// Handle --inode
 	if (commandline_inode != -1)
 	{
-		ext2_ino_t ino = commandline_inode;
-		struct ext2_inode *inode = new ext2_inode;
-		ext2fs_read_inode (fs, commandline_inode, inode);
-		std::cout << "Contents of inode " << commandline_inode << ":" << std::endl;
-		dump_hex_to(std::cout, reinterpret_cast<char const*> (inode), inode_size_);
-		std::cout << std::endl;
-
-		int allocated = ext2fs_test_inode_bitmap(fs->inode_map, ino);
-		if (allocated)
-			std::cout << "Inode is Allocated" << std::endl;
-		else
-			std::cout << "Inode is Unallocated" << std::endl;
-
 		std::cout << "Group: " << commandline_group << std::endl;
-		std::cout << *inode << std::endl;
-		if (LINUX_S_ISDIR(inode->i_mode) && inode->i_blocks > 0)
-			print_directory_inode(fs, inode, commandline_inode);
-		delete inode;
+		print_inode(fs, commandline_inode);
 	}
 
 	// Handle --block
@@ -171,57 +155,15 @@ int examine_fs(ext2_filsys fs)
 	}
 
 	journal_superblock_t jsb;
-	char *buf = new char[block_size_];
-	journal_superblock_t *journal_superblock;
-	ext2_filsys jfs;
-	// Read the journal superblock.
-	if (super_block.s_journal_inum)
-	{
-		// Read internal journal superblock
-		jfs = fs;
-		struct ext2_inode *inode = new ext2_inode;
-		ext2_ino_t journal_ino = super_block.s_journal_inum;
-		ext2fs_read_inode (fs, journal_ino, inode);
-		blk_t blknum;
-		errcode = ext2fs_bmap(fs, journal_ino, inode, NULL, 0, 0, &blknum);
-		if(errcode) {
-			std::cout << "bmap returned " << (int) errcode << std::endl;
-			return EU_EXAMINE_FAIL;
-		}
-		read_block(jfs, &blknum, 0, 0, 0, buf);
-		delete inode;
-	}
-	else {
-		// Read the journal superblock from an external journal.
-		if(commandline_journal_filename.empty()) {
-			std::cout << "Must specify the external journal with -j devicename" << std::endl;
-			return EU_EXAMINE_FAIL;
-		}
-		io_manager io_mgr = unix_io_manager;
-		errcode = ext2fs_open( commandline_journal_filename.c_str(),
-			EXT2_FLAG_JOURNAL_DEV_OK, 0, 0, io_mgr, &jfs);
-		if (errcode) {
-			std::cout << "Error opening external journal." << std::endl;
-			return EU_EXAMINE_FAIL;
-		}
-		if ((errcode = io_channel_read_blk(jfs->io, jfs->super->s_first_data_block+1,
-				-1024, buf) )) {
-			com_err("extundelete", errcode, "while reading journal superblock");
-			return EU_EXAMINE_FAIL;
-		}
-	}
+	journal_superblock_t *journal_superblock = &jsb;
+	ext2_filsys jfs = NULL;
+	get_journal_fs(fs, &jfs, commandline_journal_filename);
+	read_journal_superblock(fs, jfs, journal_superblock);
 
-	// Convert buffer to journal superblock
-	journal_superblock_to_cpu(buf);
-	journal_superblock = reinterpret_cast<journal_superblock_t *>(buf);
-	jsb = *journal_superblock;
 	if (commandline_superblock && commandline_journal)
 	{
 		std::cout << jsb << std::endl;
 	}
-	// Sanity check to ensure there is no endianness problem.
-	assert(journal_superblock->s_header.h_magic == JFS_MAGIC_NUMBER);
-	delete[] buf;
 
 	if (commandline_journal_block != -1)
 	{
