@@ -135,6 +135,7 @@ uint32_t ext2fs_get_generic_bitmap_end(ext2fs_generic_bitmap bitmap)
 #endif
 
 // extern variable definitions
+std::string outputdir;
 ext2_super_block super_block;
 uint32_t block_size_;
 uint32_t inodes_per_group_;
@@ -1930,4 +1931,39 @@ int print_inode(ext2_filsys fs, ext2_ino_t ino) {
 			print_directory_inode(fs, inode, ino);
 		delete inode;
 		return 0;
+}
+
+int extundelete_make_outputdir(const char * const dirname, const char * const progname) {
+	struct stat statbuf;
+	errno = 0;
+	if (stat(dirname, &statbuf) == -1)
+	{
+		if (errno != ENOENT)
+		{
+			int error = errno;
+			std::cout << std::flush;
+			std::cerr << progname << ": stat: " << dirname << ": "
+			<< strerror(error) << std::endl;
+			return EU_EXAMINE_FAIL;
+		}
+		else if (mkdir(dirname, 0755) == -1 && errno != EEXIST)
+		{
+			int error = errno;
+			std::cout << std::flush;
+			std::cerr << progname << ": failed to create output directory "
+			<< dirname << ": " << strerror(error) << std::endl;
+			return EU_EXAMINE_FAIL;
+		}
+		std::cout << "Writing output to directory " << dirname << std::endl;
+	}
+	else if (!S_ISDIR(statbuf.st_mode))
+	{
+		std::cout << std::flush;
+		std::cerr << progname << ": " << dirname
+		<< " exists but is not a directory!" << std::endl;
+		return EU_EXAMINE_FAIL;
+	}
+
+	outputdir = std::string(dirname);
+	return 0;
 }

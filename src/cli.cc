@@ -48,7 +48,6 @@ struct option {
 std::string progname;
 
 
-std::string outputdir = "RECOVERED_FILES/";
 bool commandline_superblock = false;
 dgrp_t commandline_group = 0;
 int commandline_inode_to_block = -1;
@@ -192,35 +191,7 @@ int examine_fs(ext2_filsys fs)
 		errcode = init_journal(fs, jfs, &jsb);
 		if (errcode) return EU_EXAMINE_FAIL;
 
-		struct stat statbuf;
-		errno = 0;
-		if (stat(outputdir.c_str(), &statbuf) == -1)
-		{
-			if (errno != ENOENT)
-			{
-				int error = errno;
-				std::cout << std::flush;
-				std::cerr << progname << ": stat: " << outputdir << ": "
-				<< strerror(error) << std::endl;
-				return EU_EXAMINE_FAIL;
-			}
-			else if (mkdir(outputdir.c_str(), 0755) == -1 && errno != EEXIST)
-			{
-				int error = errno;
-				std::cout << std::flush;
-				std::cerr << progname << ": failed to create output directory "
-				<< outputdir << ": " << strerror(error) << std::endl;
-				return EU_EXAMINE_FAIL;
-			}
-			std::cout << "Writing output to directory " << outputdir << std::endl;
-		}
-		else if (!S_ISDIR(statbuf.st_mode))
-		{
-			std::cout << std::flush;
-			std::cerr << progname << ": " << outputdir
-			<< " exists but is not a directory!" << std::endl;
-			return EU_EXAMINE_FAIL;
-		}
+		errcode = extundelete_make_outputdir("RECOVERED_FILES/", progname.c_str());
 	}
 	// Handle --dump-names and --restore-all
 	if (commandline_restore_all || commandline_dump_names)
