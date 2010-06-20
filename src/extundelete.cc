@@ -135,7 +135,6 @@ uint32_t ext2fs_get_generic_bitmap_end(ext2fs_generic_bitmap bitmap)
 #endif
 
 // extern variable definitions
-std::string progname;
 ext2_super_block super_block;
 uint32_t block_size_;
 uint32_t inodes_per_group_;
@@ -400,7 +399,7 @@ void print_version(void)
 		std::cout << "Processor is big endian." << std::endl;
 }
 
-void print_usage(std::ostream& os)
+void print_usage(std::ostream& os, std::string progname)
 {
   os << "Usage: " << progname << " [options] [--] device-file\n";
   os << "Options:\n";

@@ -71,7 +71,7 @@ struct filebuf
 
 // Function declarations
 // Helper function declarations
-void print_usage(std::ostream& os);
+void print_usage(std::ostream& os, std::string progname);
 void print_version(void);
 void journal_header_to_cpu(char *);
 

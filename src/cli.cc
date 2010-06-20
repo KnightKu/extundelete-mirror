@@ -44,8 +44,8 @@ struct option {
 /* ext3/4 libraries */
 #include <ext2fs/ext2fs.h>
 #include "extundelete.h"
-#include "extundelete-priv.h"
 #include "block.h"
+std::string progname;
 
 
 std::string outputdir = "RECOVERED_FILES/";
@@ -82,7 +82,7 @@ int examine_fs(ext2_filsys fs)
 	if (commandline_superblock && !commandline_journal)
 	{
 		// Print contents of superblock.
-		std::cout << &super_block << std::endl;
+		std::cout << fs->super << std::endl;
 	}
 
 	if (commandline_action)
@@ -103,11 +103,11 @@ int examine_fs(ext2_filsys fs)
 	// Check commandline options against superblock bounds.
 	if (commandline_inode != -1)
 	{
-		if ((uint32_t)commandline_inode > inode_count_)
+		if ((uint32_t)commandline_inode > fs->super->s_inodes_count)
 		{
 			std::cout << std::flush;
 			std::cerr << progname << ": --inode: inode " << commandline_inode 
-			<< " is out of range. There are only " << inode_count_
+			<< " is out of range. There are only " << fs->super->s_inodes_count
 			<< " inodes." << std::endl;
 			return EU_EXAMINE_FAIL;
 		}
@@ -129,12 +129,12 @@ int examine_fs(ext2_filsys fs)
 
 	if (commandline_show_journal_inodes != -1)
 	{
-		if ((uint32_t)commandline_show_journal_inodes > inode_count_)
+		if ((uint32_t)commandline_show_journal_inodes > fs->super->s_inodes_count)
 		{
 			std::cout << std::flush;
 			std::cerr << progname << ": --show-journal-inodes: inode "
 			<< commandline_show_journal_inodes
-			<< " is out of range. There are only " << inode_count_
+			<< " is out of range. There are only " << fs->super->s_inodes_count
 			<< " inodes." << std::endl;
 			return EU_EXAMINE_FAIL;
 		}
@@ -357,7 +357,7 @@ int examine_fs(ext2_filsys fs)
     show_journal_inodes(commandline_show_journal_inodes);
 
 //*/
-	if(super_block.s_journal_inum == 0)
+	if(fs->super->s_journal_inum == 0)
 		ext2fs_close(jfs);
 	return 0;
 }
@@ -427,7 +427,7 @@ int decode_options(int& argc, char**& argv)
 			switch (long_option)
 			{
 			case opt_help:
-				print_usage(std::cout);
+				print_usage(std::cout, progname);
 				return EU_STOP;
 			case opt_version:
 				print_version();
@@ -649,7 +649,7 @@ int decode_options(int& argc, char**& argv)
 
 	if (argc == 0)
 	{
-		print_usage(std::cerr);
+		print_usage(std::cerr, progname);
 		return EU_DECODE_FAIL;
 	}
 	return 0;

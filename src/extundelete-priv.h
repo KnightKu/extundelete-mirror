@@ -15,7 +15,6 @@
 #ifndef VERSION
 #define VERSION "0.1.9";
 #endif
-extern std::string progname;
 extern std::string outputdir;
 
 // The superblock.
