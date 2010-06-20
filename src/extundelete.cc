@@ -1762,14 +1762,16 @@ int restore_inode(ext2_filsys fs, ext2_filsys jfs, ext2_ino_t ino, const std::st
 			file.close();
 
 			if(!flag) {
-				if (truncate( (outputdir + fname2).c_str(), EXT2_I_SIZE(inode)) == 0) {
+				if ((retval = truncate( (outputdir + fname2).c_str(), EXT2_I_SIZE(inode))) == 0) {
 					std::cout << "Restored inode " << ino << " to file ";
 					std::cout << (outputdir + fname2) << std::endl;
 					retval = 0;
 				} else {
 					std::cout << "Failed to restore inode " << ino << " to file ";
 					std::cout << (outputdir + fname2) << ":";
-					std::cout << "Unable to set proper file size." << std::endl;
+					std::cout << "Unable to set proper file size (" << EXT2_I_SIZE(inode)
+					<< ")." << std::endl;
+					std::cout << "Attempt to truncate returned error " << retval << ".";
 					retval = EU_RESTORE_FAIL;
 				}
 			}
