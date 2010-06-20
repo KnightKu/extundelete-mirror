@@ -318,6 +318,16 @@ size_t journ_tag_bytes(journal_superblock_t *jsb)
 		return 8;
 }
 
+// Changes a journal header, as read from disk, to the same
+// endianness as the computer this program is running on.
+void journal_header_to_cpu(char *jhead)
+{
+	int item = sizeof(uint32_t)/sizeof(char);
+	be32_to_cpu( (uint32_t *) jhead );
+	be32_to_cpu( (uint32_t *) &jhead[item*1] );
+	be32_to_cpu( (uint32_t *) &jhead[item*2] );
+}
+
 // Changes a journal revoke header, as read from disk, to the same
 // endianness as the computer this program is running on.
 // FIXME: This function may fail if (for example) the partition was used on a
@@ -345,16 +355,6 @@ void journal_block_tag_to_cpu(char *jbt, journal_superblock_t *jsb)
 	be32_to_cpu( (uint32_t *) &jbt[item*1] );
 	if(journ_tag_bytes(jsb) > 8)
 		be32_to_cpu( (uint32_t *) &jbt[item*2] );
-}
-
-// Changes a journal header, as read from disk, to the same
-// endianness as the computer this program is running on.
-void journal_header_to_cpu(char *jhead)
-{
-	int item = sizeof(uint32_t)/sizeof(char);
-	be32_to_cpu( (uint32_t *) jhead );
-	be32_to_cpu( (uint32_t *) &jhead[item*1] );
-	be32_to_cpu( (uint32_t *) &jhead[item*2] );
 }
 
 // Changes the journal superblock, as read from disk, to the same

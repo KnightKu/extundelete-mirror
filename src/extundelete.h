@@ -73,7 +73,6 @@ struct filebuf
 // Helper function declarations
 void print_usage(std::ostream& os, std::string progname);
 void print_version(void);
-void journal_header_to_cpu(char *);
 
 // Main implementation function declarations
 int load_super_block(ext2_filsys fs);
@@ -103,12 +102,5 @@ std::ostream& operator<<(std::ostream& os, journal_superblock_t const& journal_s
 extern std::string commandline_restore_directory;
 extern long commandline_before;
 extern long commandline_after;
-
-void parse_inode_block(struct ext2_inode *inode, const char *buf, ext2_ino_t ino);
-errcode_t recover_inode(ext2_filsys fs, ext2_filsys jfs, ext2_ino_t ino,
-		struct ext2_inode *&inode, int ver);
-int pair_names_with(ext2_filsys fs, ext2_filsys jfs, std::vector<ext2_ino_t>& inolist,
-		ext2_ino_t ino, std::string dirname, int del, std::vector<ext2_ino_t>& parent_inos);
-
 
 #endif //EXTUNDELETE_H
