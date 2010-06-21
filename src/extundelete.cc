@@ -465,21 +465,16 @@ int load_super_block(ext2_filsys fs)
 	// Sanity checks.
 	// ext2-based filesystem
 	if (super_block.s_magic != 0xEF53) return EU_FS_ERR;
-	assert(super_block.s_magic == 0xEF53);
 	// All inodes belong to a group.
 	if (groups_ * inodes_per_group_ != inode_count_) return EU_FS_ERR;
-	assert(groups_ * inodes_per_group_ == inode_count_);
 	// The inode bitmap has to fit in a single block.
 	if (inodes_per_group_ > 8 * block_size_) return EU_FS_ERR;
-	assert(inodes_per_group_ <= 8 * block_size_);
 	// Each inode must fit within one block.
 	if (inode_size_ > block_size_) return EU_FS_ERR;
-	assert(inode_size_ <= block_size_);
 	// inode_size must be a power of 2.
-	assert(!((inode_size_ - 1) & inode_size_));
+	if( (inode_size_ - 1) & inode_size_ ) return EU_FS_ERR;
 	// There should fit exactly an integer number of inodes in one block.
 	if ((block_size_ / inode_size_) * inode_size_ != block_size_) return EU_FS_ERR;
-	assert((block_size_ / inode_size_) * inode_size_ == block_size_);
 	// File system must have a journal.
 	if(!(super_block.s_feature_compat & EXT3_FEATURE_COMPAT_HAS_JOURNAL)) {
 		std::cout << "ERROR: The specified device does not have a journal file.	"
@@ -512,8 +507,10 @@ int load_super_block(ext2_filsys fs)
 		std::cout << "WARNING: extundelete may have problems reading from an external journal.\n";
 
 	// Initialize group_descriptor_table.
+	if(EXT2_DESC_PER_BLOCK(&super_block) * sizeof(ext2_group_desc) != (size_t)block_size_)
+		return EU_FS_ERR;
+
 	//FIXME: may need to change to be compatible with newer file systems
-	assert(EXT2_DESC_PER_BLOCK(&super_block) * sizeof(ext2_group_desc) == (size_t)block_size_);
 	group_descriptor_table = new ext2_group_desc[groups_];
 	for (uint32_t n = 0; n < fs->group_desc_count; n++)
 	{
@@ -986,12 +983,11 @@ int read_journal_block(ext2_filsys fs, blk_t n, char *buf)
 int init_journal(ext2_filsys fs, ext2_filsys jfs, journal_superblock_t *jsb)
 {
 	// Minimally validate input
-	assert(fs->super->s_inodes_count != 0);
-	assert(jsb->s_blocksize != 0);
-	assert(jsb->s_header.h_magic == JFS_MAGIC_NUMBER);
+	if(fs->super->s_inodes_count == 0) return EU_FS_ERR;
+	if(jsb->s_blocksize == 0) return EU_FS_ERR;
+	if(jsb->s_header.h_magic != JFS_MAGIC_NUMBER) return EU_FS_ERR;
 
 	// Find the block range used by the journal.
-	//assert(super_block.s_journal_inum);
 	struct ext2_inode *journal_inode = new ext2_inode;
 	ext2_ino_t journal_ino = super_block.s_journal_inum;
 	ext2fs_read_inode (fs, journal_ino, journal_inode);
@@ -1908,7 +1904,7 @@ int read_journal_superblock (ext2_filsys fs, ext2_filsys jfs,
 
 	delete[] buf;
 	// Sanity check to ensure there is no endianness problem.
-	assert(journal_superblock->s_header.h_magic == JFS_MAGIC_NUMBER);
+	if(journal_superblock->s_header.h_magic != JFS_MAGIC_NUMBER) return EU_FS_ERR;
 	return 0;
 }
 
