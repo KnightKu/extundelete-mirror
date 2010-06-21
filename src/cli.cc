@@ -45,32 +45,30 @@ struct option {
 #include <ext2fs/ext2fs.h>
 #include "extundelete.h"
 
-std::string progname;
-std::string commandline_histogram;
-std::string commandline_journal_filename;
+static std::string progname;
+static std::string commandline_histogram;
+static std::string commandline_journal_filename;
 std::string commandline_restore_directory;
-std::string commandline_restore_file;
-std::string commandline_restore_files;
-std::string commandline_restore_inode;
+static std::string commandline_restore_file;
+static std::string commandline_restore_files;
+static std::string commandline_restore_inode;
+static std::string commandline_fsname;
 
-bool commandline_action = false;
-bool commandline_directory = false;
-bool commandline_dump_names = false;
-bool commandline_journal = false;
-bool commandline_restore_all = false;
-bool commandline_show_hardlinks = false;
-bool commandline_superblock = false;
+static bool commandline_action = false;
+static bool commandline_journal = false;
+static bool commandline_restore_all = false;
+static bool commandline_superblock = false;
 
-ext2_ino_t commandline_inode = 0;
-ext2_ino_t commandline_inode_to_block = 0;
-ext2_ino_t commandline_show_journal_inodes = 0;
+static ext2_ino_t commandline_inode = 0;
+static ext2_ino_t commandline_inode_to_block = 0;
+static ext2_ino_t commandline_show_journal_inodes = 0;
 
-blk_t commandline_backup_superblock = 0;
-blk_t commandline_block = 0;
-blk_t commandline_block_size = 0;
-blk_t commandline_journal_block = 0;
+static blk_t commandline_backup_superblock = 0;
+static blk_t commandline_block = 0;
+static blk_t commandline_block_size = 0;
+static blk_t commandline_journal_block = 0;
 
-__u32 commandline_journal_transaction = 0;
+static __u32 commandline_journal_transaction = 0;
 
 long commandline_before = LONG_MAX;
 long commandline_after = 0;
@@ -188,9 +186,10 @@ int examine_fs(ext2_filsys fs)
 		if (errcode) return EU_EXAMINE_FAIL;
 
 		errcode = extundelete_make_outputdir("RECOVERED_FILES/", progname.c_str());
+		if (errcode) return EU_EXAMINE_FAIL;
 	}
-	// Handle --dump-names and --restore-all
-	if (commandline_restore_all || commandline_dump_names)
+	// Handle --restore-all
+	if (commandline_restore_all)
 		errcode = restore_directory (fs, jfs, EXT2_ROOT_INO, "");
 	// Handle --restore-directory
 	if (!commandline_restore_directory.empty()) {
@@ -342,8 +341,6 @@ int decode_options(int& argc, char**& argv)
 		opt_after,
 		opt_before,
 		opt_histogram,
-		opt_directory,
-		opt_dump_names,
 		opt_journal,
 		opt_journal_block,
 		opt_journal_transaction,
@@ -354,7 +351,6 @@ int decode_options(int& argc, char**& argv)
 		opt_restore_directory,
 		opt_restore_inode,
 		opt_restore_all,
-		opt_show_hardlinks,
 		opt_help
 	};
 	struct option longopts[] = {
@@ -366,8 +362,6 @@ int decode_options(int& argc, char**& argv)
 		{"after", 1, &long_option, opt_after},
 		{"before", 1, &long_option, opt_before},
 		{"histogram", 1, &long_option, opt_histogram},
-		{"directory", 0, &long_option, opt_directory},
-		{"dump-names", 0, &long_option, opt_dump_names},
 		{"journal", 0, &long_option, opt_journal},
 		{"journal-block", 1, &long_option, opt_journal_block},
 		{"journal-transaction", 1, &long_option, opt_journal_transaction},
@@ -378,12 +372,9 @@ int decode_options(int& argc, char**& argv)
 		{"restore-files", 1, &long_option, opt_restore_files},
 		{"restore-directory", 1, &long_option, opt_restore_directory},
 		{"restore-all", 0, &long_option, opt_restore_all},
-		{"show-hardlinks", 0, &long_option, opt_show_hardlinks},
 		{NULL, 0, NULL, 0}
 	};
 
-	int exclusive1 = 0;
-	int exclusive2 = 0;
 	std::string hist_arg;
 
 	while ((short_option = getopt_long(argc, argv, "j:vVb:B:", longopts, NULL)) != -1)
@@ -402,16 +393,8 @@ int decode_options(int& argc, char**& argv)
 			case opt_superblock:
 				commandline_superblock = true;
 				break;
-			case opt_dump_names:
-				commandline_dump_names = true;
-				++exclusive1;
-				++exclusive2;
-				break;
 			case opt_journal:
 				commandline_journal = true;
-				break;
-			case opt_directory:
-				commandline_directory = true;
 				break;
 			case opt_after:
 				errno = 0;
@@ -444,9 +427,6 @@ int decode_options(int& argc, char**& argv)
 			case opt_restore_all:
 				commandline_restore_all = true;
 				break;
-			case opt_show_hardlinks:
-				commandline_show_hardlinks = true;
-				break;
 			case opt_inode_to_block:
 				errno = 0;
 				commandline_inode_to_block = strtoul(optarg, NULL, 10);
@@ -464,7 +444,7 @@ int decode_options(int& argc, char**& argv)
 				break;
 			case opt_inode:
 				errno = 0;
-				commandline_inode = strtol(optarg, NULL, 10);
+				commandline_inode = strtoul(optarg, NULL, 10);
 				if(errno) {
 					std::cerr << "Invalid parameter: --inode " << optarg << std::endl;
 					return EU_DECODE_FAIL;
@@ -476,8 +456,6 @@ int decode_options(int& argc, char**& argv)
 					<< " is out of range." << std::endl;
 					return EU_DECODE_FAIL;
 				}
-				++exclusive1;
-				++exclusive2;
 				break;
 			case opt_block:
 				errno = 0;
@@ -493,8 +471,6 @@ int decode_options(int& argc, char**& argv)
 					<< " is out of range." << std::endl;
 					return EU_DECODE_FAIL;
 				}
-				++exclusive1;
-				++exclusive2;
 				break;
 			case opt_show_journal_inodes:
 				errno = 0;
@@ -511,8 +487,6 @@ int decode_options(int& argc, char**& argv)
 					<< std::endl;
 					return EU_DECODE_FAIL;
 				}
-				++exclusive1;
-				++exclusive2;
 				break;
 			case opt_journal_transaction:
 				errno = 0;
@@ -553,29 +527,11 @@ int decode_options(int& argc, char**& argv)
 		}
 	}
 
-	if (exclusive1 > 1)
-	{
-		std::cout << std::flush;
-		std::cerr << progname << ": Only one of --group, --inode, --block, "
-			<< "--journal-block, --dump-names or --show-journal-inodes may be "
-			<< "specified." << std::endl;
-		return EU_DECODE_FAIL;
-	}
-	if (exclusive2 > 1)
-	{
-		std::cout << std::flush;
-		std::cerr << progname << ": Only one of --inode, --block, --search*, "
-			<< "--journal-block, --dump-names or --show-journal-inodes may be "
-			<< "specified." << std::endl;
-		return EU_DECODE_FAIL;
-	}
-	bool outputwritten = false;
 	commandline_action =
 			(commandline_inode != 0 ||
 			 commandline_block != 0 ||
 			 commandline_journal_block != 0 ||
 			 commandline_journal_transaction != 0 ||
-			 commandline_dump_names ||
 			 commandline_show_journal_inodes != 0 ||
 			 !commandline_histogram.empty() ||
 			 commandline_inode_to_block != 0 ||
@@ -583,18 +539,15 @@ int decode_options(int& argc, char**& argv)
 			 !commandline_restore_file.empty() ||
 			 !commandline_restore_files.empty() ||
 			 !commandline_restore_directory.empty() ||
-			 commandline_restore_all ||
-			 commandline_show_hardlinks);
+			 commandline_restore_all);
 	if (!commandline_action && !commandline_superblock)
 	{
 		std::cout << "No action specified; implying --superblock.\n";
 		commandline_superblock = true;
-		outputwritten = true;
 	}
 	if (commandline_before < LONG_MAX || commandline_after)
 	{
 		std::cout << "Only show and process deleted entries if they are deleted ";
-		outputwritten = true;
 		// date -d@1234567890 converts a value to a readable string (using GNU date)
 		std::string after = to_string(commandline_after);
 		std::string before = to_string(commandline_before);
@@ -608,24 +561,19 @@ int decode_options(int& argc, char**& argv)
 		if (commandline_before && commandline_after)
 			assert(commandline_after < commandline_before);
 	}
-	if (outputwritten)
-		std::cout << std::endl;
 
 	argv += optind;
 	argc -= optind;
 
+	// Sanity checks on the user.
 	if (argc == 0)
 	{
+		std::cerr << progname << ": Missing device name." << std::endl;
 		print_usage(std::cerr, progname);
 		return EU_DECODE_FAIL;
 	}
-	// Sanity checks on the user.
-	if (argc != 1) {
-		if (argc == 0)
-			std::cerr << progname << ": Missing device name. ";
-		else
-			std::cerr << progname << ": Too many non-options. ";
-
+	if (argc > 1) {
+		std::cerr << progname << ": Some unrecognized options were found. ";
 		std::cerr << "Use --help for a usage message." << std::endl;
 		return EU_DECODE_FAIL;
 	}
