@@ -87,7 +87,7 @@ int get_journal_fs (ext2_filsys fs, ext2_filsys *jfs, std::string journal_filena
 int read_journal_superblock (ext2_filsys fs, ext2_filsys jfs,
 		journal_superblock_t *journal_superblock);
 int print_inode(ext2_filsys fs, ext2_ino_t ino);
-void classify_block(ext2_filsys fs, blk_t blocknr, dgrp_t group);
+void classify_block(ext2_filsys fs, blk_t blocknr);
 int extundelete_make_outputdir(const char * const dirname, const char * const progname);
 
 // From insertionops.cc

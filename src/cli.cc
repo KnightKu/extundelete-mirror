@@ -44,51 +44,49 @@ struct option {
 /* ext3/4 libraries */
 #include <ext2fs/ext2fs.h>
 #include "extundelete.h"
-#include "block.h"
+
 std::string progname;
-
-
-bool commandline_superblock = false;
-dgrp_t commandline_group = 0;
-int commandline_inode_to_block = -1;
-int commandline_inode = -1;
-__s64 commandline_block = -1;
-__s64 commandline_journal_block = -1;
-int commandline_journal_transaction = -1;
-bool commandline_journal = false;
-bool commandline_dump_names = false;
-bool commandline_directory = false;
-long commandline_before = LONG_MAX;
-long commandline_after = 0;
-bool commandline_action = false;
 std::string commandline_histogram;
-int commandline_show_journal_inodes = -1;
+std::string commandline_journal_filename;
+std::string commandline_restore_directory;
 std::string commandline_restore_file;
 std::string commandline_restore_files;
-std::string commandline_restore_directory;
 std::string commandline_restore_inode;
+
+bool commandline_action = false;
+bool commandline_directory = false;
+bool commandline_dump_names = false;
+bool commandline_journal = false;
 bool commandline_restore_all = false;
 bool commandline_show_hardlinks = false;
-std::string commandline_journal_filename;
+bool commandline_superblock = false;
+
+ext2_ino_t commandline_inode = 0;
+ext2_ino_t commandline_inode_to_block = 0;
+ext2_ino_t commandline_show_journal_inodes = 0;
+
 blk_t commandline_backup_superblock = 0;
+blk_t commandline_block = 0;
 blk_t commandline_block_size = 0;
+blk_t commandline_journal_block = 0;
+
+__u32 commandline_journal_transaction = 0;
+
+long commandline_before = LONG_MAX;
+long commandline_after = 0;
 
 
 int examine_fs(ext2_filsys fs)
 {
 	errcode_t errcode;
 
-	if (commandline_superblock && !commandline_journal)
-	{
+	if (commandline_superblock && !commandline_journal) {
 		// Print contents of superblock.
 		std::cout << fs->super << std::endl;
 	}
 
 	if (commandline_action)
 	{
-		if (commandline_inode_to_block != -1)
-			commandline_group = ext2fs_group_of_ino (fs, commandline_inode_to_block);
-
 		std::cout << "Loading filesystem metadata ... " << std::flush;
 		/* Note: for a 1 TB partition with 4k block size, these bitmaps
 		 * require 40 MB memory. */
@@ -100,7 +98,7 @@ int examine_fs(ext2_filsys fs)
 	}
 
 	// Check commandline options against superblock bounds.
-	if (commandline_inode != -1)
+	if (commandline_inode != 0)
 	{
 		if ((uint32_t)commandline_inode > fs->super->s_inodes_count)
 		{
@@ -110,9 +108,8 @@ int examine_fs(ext2_filsys fs)
 			<< " inodes." << std::endl;
 			return EU_EXAMINE_FAIL;
 		}
-		commandline_group = ext2fs_group_of_ino(fs, commandline_inode);
 	}
-	if (commandline_block != -1)
+	if (commandline_block != 0)
 	{
 		if (commandline_block >= fs->super->s_blocks_count || commandline_block == 0)
 		{
@@ -123,10 +120,9 @@ int examine_fs(ext2_filsys fs)
 			<< fs->super->s_blocks_count - 1 << std::endl;
 			return EU_EXAMINE_FAIL;
 		}
-		commandline_group = ext2fs_group_of_blk(fs, commandline_block);
 	}
 
-	if (commandline_show_journal_inodes != -1)
+	if (commandline_show_journal_inodes != 0)
 	{
 		if ((uint32_t)commandline_show_journal_inodes > fs->super->s_inodes_count)
 		{
@@ -137,20 +133,20 @@ int examine_fs(ext2_filsys fs)
 			<< " inodes." << std::endl;
 			return EU_EXAMINE_FAIL;
 		}
-		commandline_group = ext2fs_group_of_ino(fs, commandline_show_journal_inodes);
 	}
 
 	// Handle --inode
-	if (commandline_inode != -1)
+	if (commandline_inode != 0)
 	{
-		std::cout << "Group: " << commandline_group << std::endl;
+		std::cout << "Group: " << ext2fs_group_of_ino(fs, commandline_inode)
+		<< std::endl;
 		print_inode(fs, commandline_inode);
 	}
 
 	// Handle --block
-	if (commandline_block != -1 || (commandline_journal_block != -1 && commandline_journal))
+	if (commandline_block != 0 || (commandline_journal_block != 0 && commandline_journal))
 	{
-		classify_block(fs, commandline_block, commandline_group);
+		classify_block(fs, commandline_block);
 	}
 
 	journal_superblock_t jsb;
@@ -164,7 +160,7 @@ int examine_fs(ext2_filsys fs)
 		std::cout << jsb << std::endl;
 	}
 
-	if (commandline_journal_block != -1)
+	if (commandline_journal_block != 0)
 	{
 		if (commandline_journal_block >= jsb.s_maxlen)
 		{
@@ -324,7 +320,7 @@ int examine_fs(ext2_filsys fs)
   }
 
   // Handle --show-journal-inodes
-  if (commandline_show_journal_inodes != -1)
+  if (commandline_show_journal_inodes != 0)
     show_journal_inodes(commandline_show_journal_inodes);
 
 //*/
@@ -453,7 +449,7 @@ int decode_options(int& argc, char**& argv)
 				break;
 			case opt_inode_to_block:
 				errno = 0;
-				commandline_inode_to_block = strtol(optarg, NULL, 10);
+				commandline_inode_to_block = strtoul(optarg, NULL, 10);
 				if(errno) {
 					std::cerr << "Invalid parameter: --inode-to-block " << optarg << std::endl;
 					return EU_DECODE_FAIL;
@@ -485,12 +481,12 @@ int decode_options(int& argc, char**& argv)
 				break;
 			case opt_block:
 				errno = 0;
-				commandline_block = strtol(optarg, NULL, 10);
+				commandline_block = strtoul(optarg, NULL, 10);
 				if(errno) {
 					std::cerr << "Invalid parameter: --block " << optarg << std::endl;
 					return EU_DECODE_FAIL;
 				}
-				if (commandline_block < 0)
+				if (commandline_block < 1)
 				{
 					std::cout << std::flush;
 					std::cerr << progname << ": --block: block " << commandline_block
@@ -502,7 +498,7 @@ int decode_options(int& argc, char**& argv)
 				break;
 			case opt_show_journal_inodes:
 				errno = 0;
-				commandline_show_journal_inodes = strtol(optarg, NULL, 10);
+				commandline_show_journal_inodes = strtoul(optarg, NULL, 10);
 				if(errno) {
 					std::cerr << "Invalid parameter: --show-journal-inodes " << optarg << std::endl;
 					return EU_DECODE_FAIL;
@@ -520,7 +516,7 @@ int decode_options(int& argc, char**& argv)
 				break;
 			case opt_journal_transaction:
 				errno = 0;
-				commandline_journal_transaction = strtol(optarg, NULL, 10);
+				commandline_journal_transaction = strtoul(optarg, NULL, 10);
 				if(errno) {
 					std::cerr << "Invalid parameter: --journal-transaction " << optarg << std::endl;
 					return EU_DECODE_FAIL;
@@ -575,14 +571,14 @@ int decode_options(int& argc, char**& argv)
 	}
 	bool outputwritten = false;
 	commandline_action =
-			(commandline_inode != -1 ||
-			 commandline_block != -1 ||
-			 commandline_journal_block != -1 ||
-			 commandline_journal_transaction != -1 ||
+			(commandline_inode != 0 ||
+			 commandline_block != 0 ||
+			 commandline_journal_block != 0 ||
+			 commandline_journal_transaction != 0 ||
 			 commandline_dump_names ||
-			 commandline_show_journal_inodes != -1 ||
+			 commandline_show_journal_inodes != 0 ||
 			 !commandline_histogram.empty() ||
-			 commandline_inode_to_block != -1 ||
+			 commandline_inode_to_block != 0 ||
 			 !commandline_restore_inode.empty() ||
 			 !commandline_restore_file.empty() ||
 			 !commandline_restore_files.empty() ||
@@ -623,17 +619,64 @@ int decode_options(int& argc, char**& argv)
 		print_usage(std::cerr, progname);
 		return EU_DECODE_FAIL;
 	}
+	// Sanity checks on the user.
+	if (argc != 1) {
+		if (argc == 0)
+			std::cerr << progname << ": Missing device name. ";
+		else
+			std::cerr << progname << ": Too many non-options. ";
+
+		std::cerr << "Use --help for a usage message." << std::endl;
+		return EU_DECODE_FAIL;
+	}
+
 	return 0;
+}
+
+int init_fs(const char* fsname, ext2_filsys *ret_fs) {
+	struct stat statbuf;
+	int error = 0;
+	errcode_t errcode;
+	io_manager io_mgr = unix_io_manager;
+
+	// Ensure the file is a filesystem.
+	errno = 0;
+	if (stat (fsname, &statbuf) == -1) {
+		error = errno;
+		if (error != EOVERFLOW) {
+			std::cout << std::flush;
+			std::cerr << progname << ": stat \"" << fsname << "\": "
+			<< strerror (error) << std::endl;
+			return EU_FS_ERR;
+		}
+	}
+	if (error == 0) {
+		if (S_ISDIR (statbuf.st_mode))
+		{
+			std::cerr << progname << ": \"" << fsname << "\" is a directory. You need "
+			<< "to use the raw filesystem device (or a copy thereof)." << std::endl;
+			return EU_FS_ERR;
+		}
+		if (!S_ISBLK(statbuf.st_mode) && statbuf.st_size < 2048)
+		{
+			std::cerr << progname << ": \"" << fsname << "\" is too small to be a"
+			<< " filesystem (" << statbuf.st_size << " bytes)." << std::endl;
+			return EU_FS_ERR;
+		}
+	}
+
+	// Open the filesystem.
+	errcode = ext2fs_open (fsname, 0, commandline_backup_superblock,
+		commandline_block_size, io_mgr, ret_fs);
+	return errcode;
 }
 
 // Main program implementation
 int main(int argc, char* argv[])
 {
-	struct stat statbuf;
-	int error = 0;
 	ext2_filsys fs;
-	io_manager io_mgr = unix_io_manager;
 	errcode_t errcode;
+
 	progname = argv[0];
 
 	errcode = decode_options(argc, argv);
@@ -643,52 +686,12 @@ int main(int argc, char* argv[])
 		return EXIT_FAILURE;
 	}
 
-	// Sanity checks on the user.
-	if (argc != 1) {
-		if (argc == 0)
-			std::cerr << progname << ": Missing device name. ";
-		else
-			std::cerr << progname << ": Too many non-options. ";
-
-		std::cerr << "Use --help for a usage message." << std::endl;
-		return EXIT_FAILURE;
-	}
-
-	// Ensure the file is a filesystem.
-	errno = 0;
-	if (stat (*argv, &statbuf) == -1) {
-		error = errno;
-		if (error != EOVERFLOW) {
-			std::cout << std::flush;
-			std::cerr << progname << ": stat \"" << *argv << "\": "
-			<< strerror (error) << std::endl;
-			return EXIT_FAILURE;
-		}
-	}
-	if (error == 0) {
-		if (S_ISDIR (statbuf.st_mode))
-		{
-			std::cerr << progname << ": \"" << *argv << "\" is a directory. You need "
-			<< "to use the raw filesystem device (or a copy thereof)." << std::endl;
-			return EXIT_FAILURE;
-		}
-		if (!S_ISBLK(statbuf.st_mode) && statbuf.st_size < 2048)
-		{
-			std::cerr << progname << ": \"" << *argv << "\" is too small to be a"
-			<< " filesystem (" << statbuf.st_size << " bytes)." << std::endl;
-			return EXIT_FAILURE;
-		}
-	}
-
-	// Open the filesystem.
-	errcode = ext2fs_open (*argv, 0, commandline_backup_superblock,
-		commandline_block_size, io_mgr, &fs);
-
+	errcode = init_fs(*argv, &fs);
 	if (errcode) {
 		std::cout << std::flush;
 		std::cerr << progname << ": failed to read-only open device \""
 		<< *argv << "\": Error code " << errcode << std::endl;
-		return EXIT_FAILURE; 
+		return EXIT_FAILURE;
 	}
 
 	// Read constants from super block.

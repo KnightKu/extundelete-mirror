@@ -603,7 +603,7 @@ errcode_t read_block(ext2_filsys fs, blk_t *blocknr, e2_blkcnt_t blockcnt,
 
 
 // This function prints the data contained within the block blocknr
-void classify_block(ext2_filsys fs, blk_t blocknr, dgrp_t group)
+void classify_block(ext2_filsys fs, blk_t blocknr)
 {
 	char* block = new char[block_size_];
 	std::cout << "Block size: " << block_size_ << std::endl;
@@ -616,7 +616,7 @@ void classify_block(ext2_filsys fs, blk_t blocknr, dgrp_t group)
 	int allocated = extundelete_test_block_bitmap(fs->block_map, blocknr);
 	if(!allocated) std::cout << "not ";
 	std::cout << "allocated." << std::endl;
-	std::cout << "Block " << blocknr <<" is in group " << group
+	std::cout << "Block " << blocknr <<" is in group " << ext2fs_group_of_blk(fs, blocknr)
 	<< "." << std::endl;
 	errcode_t retval = ext2fs_read_dir_block(fs, blocknr, block);
 	if(retval == 0) {
