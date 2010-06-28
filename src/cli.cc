@@ -147,10 +147,15 @@ int examine_fs(ext2_filsys fs)
 		classify_block(fs, commandline_block);
 	}
 
+	ext2_filsys jfs = NULL;
+	errcode = get_journal_fs(fs, &jfs, commandline_journal_filename);
+	if (errcode) {
+		std::cout << "Error opening journal." << std::endl;
+		return errcode;
+	}
+
 	journal_superblock_t jsb;
 	journal_superblock_t *journal_superblock = &jsb;
-	ext2_filsys jfs = NULL;
-	get_journal_fs(fs, &jfs, commandline_journal_filename);
 	errcode = read_journal_superblock(fs, jfs, journal_superblock);
 	if (errcode) {
 		std::cout << "Error reading journal superblock." << std::endl;
