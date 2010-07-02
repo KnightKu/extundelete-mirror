@@ -17,15 +17,9 @@
 #endif
 extern std::string outputdir;
 
-// The superblock.
-extern ext2_super_block super_block;
 // Frequently used constant values from the superblock.
 extern uint32_t block_size_;
-extern uint32_t inodes_per_group_;
 extern uint16_t inode_size_;
-extern uint32_t inode_count_;
-extern uint32_t block_count_;
-extern ext2_group_desc* group_descriptor_table;
 
 // Information from journal
 typedef std::vector<blk_t>  block_list_t;

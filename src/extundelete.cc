@@ -90,19 +90,6 @@ Important future enhancements:
 #include <unistd.h>
 #include <utime.h>
 
-/* GNU headers */
-#ifndef HAVE_GETOPT_H
-#define getopt_long(a,b,c,d,e)  getopt((a),(b),(c))
-struct option {
-	const char *name;
-	int has_arg;
-	int *flag;
-	int val;
-};
-#else
-#include <getopt.h>
-#endif
-
 /* ext3/4 libraries */
 #include <ext2fs/ext2fs.h>
 #include "extundelete.h"
@@ -136,13 +123,8 @@ uint32_t ext2fs_get_generic_bitmap_end(ext2fs_generic_bitmap bitmap)
 
 // extern variable definitions
 std::string outputdir;
-ext2_super_block super_block;
 uint32_t block_size_;
-uint32_t inodes_per_group_;
 uint16_t inode_size_;
-uint32_t inode_count_;
-uint32_t block_count_;
-ext2_group_desc* group_descriptor_table;
 std::vector<uint32_t> tag_seq;
 block_list_t tag_jblk;
 block_list_t tag_fsblk;
@@ -198,6 +180,15 @@ int extundelete_test_block_bitmap(ext2fs_block_bitmap block_map, blk_t blocknr)
 	return allocated;
 }
 
+inline blk64_t extundelete_inode_table_loc(ext2_filsys fs, dgrp_t group)
+{
+#ifdef HAVE_EXT2FS_INODE_TABLE_LOC
+	return ext2fs_inode_table_loc(fs, group);
+#else
+	return fs->group_desc[group].bg_inode_table;
+#endif
+}
+
 // Returns the number of the first inode in the block.
 ext2_ino_t block_to_inode(const ext2_filsys fs, blk_t block)
 {
@@ -207,7 +198,7 @@ ext2_ino_t block_to_inode(const ext2_filsys fs, blk_t block)
 		EXT2_INODE_SIZE(fs->super);
 	blk_t max_block = max_offset >> EXT2_BLOCK_SIZE_BITS(fs->super);
 	for(uint32_t group = 0; group < fs->group_desc_count; group++ ) {
-		blk_t block_nr = group_descriptor_table[group].bg_inode_table;
+		blk_t block_nr = extundelete_inode_table_loc(fs, group);
 		block_to_group_map.insert(std::pair<blk_t, uint32_t>(block_nr, group));
 	}
 
@@ -222,9 +213,9 @@ ext2_ino_t block_to_inode(const ext2_filsys fs, blk_t block)
 		return 0;
 	}
 
-	uint32_t inode_table = group_descriptor_table[group].bg_inode_table;
-	assert(block >= inode_table && (size_t)block_size_ * (block + 1) <= (size_t)block_size_ * inode_table + inodes_per_group_ * inode_size_);
-	return 1 + group * inodes_per_group_ + (size_t)block_size_ * (block - inode_table) / inode_size_;
+	uint32_t inode_table = extundelete_inode_table_loc(fs, group);
+	assert(block >= inode_table && (size_t)block_size_ * (block + 1) <= (size_t)block_size_ * inode_table + EXT2_INODES_PER_GROUP(fs->super) * inode_size_);
+	return 1 + group * EXT2_INODES_PER_GROUP(fs->super) + (size_t)block_size_ * (block - inode_table) / inode_size_;
 }
 
 // Returns the number of blocks a non-sparse file would need for the data
@@ -453,20 +444,17 @@ int load_super_block(ext2_filsys fs)
 {
 	int errcode = 0;
 	// Frequently used constants.
-	super_block = *(fs->super);
+	ext2_super_block super_block = *(fs->super);
 	uint32_t groups_ = fs->super->s_inodes_count / fs->super->s_inodes_per_group;
 	block_size_ = EXT2_BLOCK_SIZE(fs->super);
-	inodes_per_group_ = fs->super->s_inodes_per_group;
-	inode_size_ = fs->super->s_inode_size;
-	inode_count_ = fs->super->s_inodes_count;
-	// FIXME: should use ext2fs_blocks_count instead
-	block_count_ = fs->super->s_blocks_count;
+	uint32_t inodes_per_group_ = EXT2_INODES_PER_GROUP(fs->super);
+	inode_size_ = EXT2_INODE_SIZE(fs->super);
 
 	// Sanity checks.
 	// ext2-based filesystem
 	if (super_block.s_magic != 0xEF53) return EU_FS_ERR;
 	// All inodes belong to a group.
-	if (groups_ * inodes_per_group_ != inode_count_) return EU_FS_ERR;
+	if (groups_ * inodes_per_group_ != fs->super->s_inodes_count) return EU_FS_ERR;
 	// The inode bitmap has to fit in a single block.
 	if (inodes_per_group_ > 8 * block_size_) return EU_FS_ERR;
 	// Each inode must fit within one block.
@@ -510,12 +498,6 @@ int load_super_block(ext2_filsys fs)
 	if(EXT2_DESC_PER_BLOCK(&super_block) * sizeof(ext2_group_desc) != (size_t)block_size_)
 		return EU_FS_ERR;
 
-	//FIXME: may need to change to be compatible with newer file systems
-	group_descriptor_table = new ext2_group_desc[groups_];
-	for (uint32_t n = 0; n < fs->group_desc_count; n++)
-	{
-		group_descriptor_table[n] = fs->group_desc[n];
-	}
 	return errcode;
 }
 
@@ -861,7 +843,7 @@ int restore_directory(ext2_filsys fs, ext2_filsys jfs, ext2_ino_t dirino, std::s
 		EXT2_INODE_SIZE(fs->super);
 	blk_t max_block = max_offset >> EXT2_BLOCK_SIZE_BITS(fs->super);
 	for(int group = 0; (unsigned int)group < fs->group_desc_count; group++ ) {
-		blk_t block_nr = group_descriptor_table[group].bg_inode_table;
+		blk_t block_nr = extundelete_inode_table_loc(fs, group);
 		block_to_group_map.insert(std::pair<blk_t, int>(block_nr, group));
 	}
 
@@ -882,9 +864,9 @@ int restore_directory(ext2_filsys fs, ext2_filsys jfs, ext2_ino_t dirino, std::s
 		// If the block contains inodes, find the deleted ones
 		if ( blknum - (*bgit).first < max_block) {
 			int group = (*bgit).second;
-			blk_t blknum1 = group_descriptor_table[group].bg_inode_table;
+			blk_t blknum1 = extundelete_inode_table_loc(fs, group);
 			ext2_ino_t firstino = (blknum - blknum1) * block_size_ / inode_size_
-				+ group * inodes_per_group_ + 1;
+				+ group * EXT2_INODES_PER_GROUP(fs->super) + 1;
 			read_journal_block(jfs, *jit, buf);
 			for(ext2_ino_t ino = firstino; ino < firstino + block_size_/inode_size_ ;
 					ino++ ) {
@@ -961,7 +943,7 @@ int restore_directory(ext2_filsys fs, ext2_filsys jfs, ext2_ino_t dirino, std::s
 /* Read a single block from the journal */
 int read_journal_block(ext2_filsys fs, blk_t n, char *buf)
 {
-	if(super_block.s_journal_inum) {
+	if(fs->super->s_journal_inum) {
 		read_block(fs, &n, 0, 0, 0, buf);
 	}
 	else {
@@ -989,7 +971,7 @@ int init_journal(ext2_filsys fs, ext2_filsys jfs, journal_superblock_t *jsb)
 
 	// Find the block range used by the journal.
 	struct ext2_inode *journal_inode = new ext2_inode;
-	ext2_ino_t journal_ino = super_block.s_journal_inum;
+	ext2_ino_t journal_ino = fs->super->s_journal_inum;
 	ext2fs_read_inode (fs, journal_ino, journal_inode);
 
 	// Load the journal descriptors into memory.
@@ -1000,7 +982,7 @@ int init_journal(ext2_filsys fs, ext2_filsys jfs, journal_superblock_t *jsb)
 	// error during block_iterate2.
 	blk_t *blocks = new blk_t[ 1 + jsb->s_maxlen ];
 	blocks[ jsb->s_maxlen ] = 0;
-	if(super_block.s_journal_inum) {
+	if(fs->super->s_journal_inum) {
 		ext2fs_block_iterate2 (fs, journal_ino, BLOCK_FLAG_DATA_ONLY, 0, get_block_nums, blocks);
 	}
 	else
@@ -1552,7 +1534,7 @@ int restore_file(ext2_filsys fs, ext2_filsys jfs, const std::string& fname)
 	}
 }
 
-inline errcode_t inode_is_valid(const struct ext2_inode * const inode)
+inline errcode_t inode_is_valid(const ext2_filsys fs, const struct ext2_inode * const inode)
 {
 	/* FIXME: Could also check that at least one block pointer is nonzero */
 	/* FIXME: Could also check that file size and block count is consistent */
@@ -1561,7 +1543,7 @@ inline errcode_t inode_is_valid(const struct ext2_inode * const inode)
 		inode->i_dtime == 0 &&
 		numblocks(inode) > 0 &&
 		numdatablocks(inode) > 0 &&
-		inode->i_blocks <= super_block.s_blocks_count &&
+		inode->i_blocks <= fs->super->s_blocks_count &&
 		inode->i_blocks > 0 &&
 		inode->i_links_count > 0;
 }
@@ -1573,8 +1555,8 @@ errcode_t recover_inode(ext2_filsys fs, ext2_filsys jfs, ext2_ino_t ino,
 	if ((ino == 0) || (ino > fs->super->s_inodes_count))
 		return EXT2_ET_BAD_INODE_NUM;
 	int group = ext2fs_group_of_ino(fs, ino);
-	blk_t blknum1 = group_descriptor_table[group].bg_inode_table;
-	blk_t blknum2 = (ino - 1 - group * inodes_per_group_) * inode_size_ / block_size_;
+	blk_t blknum1 = extundelete_inode_table_loc(fs, group);
+	blk_t blknum2 = (ino - 1 - group * EXT2_INODES_PER_GROUP(fs->super)) * inode_size_ / block_size_;
 	blk_t blknum = blknum1 + blknum2;
 
 	// Find the latest non-deleted inode in the journal that corresponds to the
@@ -1614,7 +1596,7 @@ errcode_t recover_inode(ext2_filsys fs, ext2_filsys jfs, ext2_ino_t ino,
 			deletedfound = true;
 			continue;
 		}
-		if( deletedfound && inode_is_valid(inode)) {
+		if( deletedfound && inode_is_valid(fs, inode)) {
 			if(ver == 0) {
 				found = true;
 				break;
@@ -1846,7 +1828,7 @@ void parse_inode_block(struct ext2_inode *inode, const char *buf, ext2_ino_t ino
 int get_journal_fs (ext2_filsys fs, ext2_filsys *jfs, std::string journal_filename) {
 
 	errcode_t errcode;
-	if (super_block.s_journal_inum)
+	if (fs->super->s_journal_inum)
 	{
 		// Internal journal
 		*jfs = fs;
@@ -1874,11 +1856,11 @@ int read_journal_superblock (ext2_filsys fs, ext2_filsys jfs,
 	int errcode;
 	char *buf = new char[block_size_];
 	// Read the journal superblock.
-	if (super_block.s_journal_inum)
+	if (fs->super->s_journal_inum)
 	{
 		// Read internal journal superblock
 		struct ext2_inode *inode = new ext2_inode;
-		ext2_ino_t journal_ino = super_block.s_journal_inum;
+		ext2_ino_t journal_ino = fs->super->s_journal_inum;
 		ext2fs_read_inode (fs, journal_ino, inode);
 		blk_t blknum;
 		errcode = ext2fs_bmap(fs, journal_ino, inode, NULL, 0, 0, &blknum);

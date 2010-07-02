@@ -6,6 +6,9 @@
 /* Define to 1 if you have the `ext2fs_get_generic_bitmap_start' function. */
 #undef HAVE_EXT2FS_GET_GENERIC_BITMAP_START
 
+/* Define to 1 if you have the `ext2fs_inode_table_loc' function. */
+#undef HAVE_EXT2FS_INODE_TABLE_LOC
+
 /* Define to 1 if you have the <fcntl.h> header file. */
 #undef HAVE_FCNTL_H
 
