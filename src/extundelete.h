@@ -1,5 +1,5 @@
 /*
- * extundelelete -- An ext3 and ext4 file system undelete tool
+ * extundelete -- An ext3 and ext4 file system undelete tool
  * Main header file for extundelete
 */
 
