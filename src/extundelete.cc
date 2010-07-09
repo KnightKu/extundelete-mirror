@@ -92,6 +92,10 @@ Important future enhancements:
 
 /* ext3/4 libraries */
 #include <ext2fs/ext2fs.h>
+/* Ensure blk64_t is available to extundelete.h */
+#ifndef HAVE_BLK64_T
+typedef __u64          blk64_t;
+#endif
 #include "extundelete.h"
 #include "extundelete-priv.h"
 #include "block.h"
@@ -99,10 +103,6 @@ Important future enhancements:
 /* Definitions to allow extundelete compilation with old e2fsprogs */
 #ifndef EXT4_EXTENTS_FL
 #define EXT4_EXTENTS_FL                 0x00080000 /* Inode uses extents */
-#endif
-
-#ifndef HAVE_BLK64_T
-typedef __u64          blk64_t;
 #endif
 
 #ifndef HAVE_EXT2FS_GET_GENERIC_BITMAP_START
@@ -120,6 +120,15 @@ uint32_t ext2fs_get_generic_bitmap_end(ext2fs_generic_bitmap bitmap)
 	return *end;
 }
 #endif
+
+inline blk64_t extundelete_inode_table_loc(ext2_filsys fs, dgrp_t group)
+{
+#ifdef HAVE_EXT2FS_INODE_TABLE_LOC
+	return ext2fs_inode_table_loc(fs, group);
+#else
+	return fs->group_desc[group].bg_inode_table;
+#endif
+}
 
 // extern variable definitions
 std::string outputdir;
@@ -178,15 +187,6 @@ int extundelete_test_block_bitmap(ext2fs_block_bitmap block_map, blk_t blocknr)
 		if(allocated) allocated = 1;
 	}
 	return allocated;
-}
-
-inline blk64_t extundelete_inode_table_loc(ext2_filsys fs, dgrp_t group)
-{
-#ifdef HAVE_EXT2FS_INODE_TABLE_LOC
-	return ext2fs_inode_table_loc(fs, group);
-#else
-	return fs->group_desc[group].bg_inode_table;
-#endif
 }
 
 // Returns the number of the first inode in the block.
@@ -421,7 +421,7 @@ void print_usage(std::ostream& os, std::string progname)
 //  os << "                         Show copies of inode 'ino' still in the journal.\n";
   os << "  --restore-inode ino[,ino,...]\n";
   os << "                         Restore the file(s) with known inode number 'ino'.\n";
-  os << "                         The restored files are created in ./RESTORED_FILES\n";
+  os << "                         The restored files are created in ./RECOVERED_FILES\n";
   os << "                         with their inode number as extension (ie, file.12345).\n";
   os << "  --restore-file 'path'  Will restore file 'path'. 'path' is relative to root\n";
   os << "                         of the partition and does not start with a '/' (it\n";
