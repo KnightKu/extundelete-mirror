@@ -105,21 +105,27 @@ typedef __u64          blk64_t;
 #define EXT4_EXTENTS_FL                 0x00080000 /* Inode uses extents */
 #endif
 
-#ifndef HAVE_EXT2FS_GET_GENERIC_BITMAP_START
-uint32_t ext2fs_get_generic_bitmap_start(ext2fs_generic_bitmap bitmap)
+__u32 extundelete_get_generic_bitmap_start(ext2fs_generic_bitmap bitmap)
 {
-	uint32_t *start = (uint32_t *) ((char *) bitmap + sizeof(errcode_t)
+#ifdef HAVE_EXT2FS_GET_GENERIC_BITMAP_START
+	return ext2fs_get_generic_bitmap_start(bitmap);
+#else
+	__u32 *start = (__u32 *) ((char *) bitmap + sizeof(errcode_t)
 		+ sizeof(ext2_filsys));
 	return *start;
+#endif
 }
 
-uint32_t ext2fs_get_generic_bitmap_end(ext2fs_generic_bitmap bitmap)
+__u32 extundelete_get_generic_bitmap_end(ext2fs_generic_bitmap bitmap)
 {
-	uint32_t *end = (uint32_t *) ((char *) bitmap + sizeof(errcode_t)
+#ifdef HAVE_EXT2FS_GET_GENERIC_BITMAP_START
+	return ext2fs_get_generic_bitmap_end(bitmap);
+#else
+	__u32 *end = (__u32 *) ((char *) bitmap + sizeof(errcode_t)
 		+ sizeof(ext2_filsys) + sizeof(__u32) );
 	return *end;
-}
 #endif
+}
 
 inline blk64_t extundelete_inode_table_loc(ext2_filsys fs, dgrp_t group)
 {
@@ -177,8 +183,8 @@ int extundelete_test_block_bitmap(ext2fs_block_bitmap block_map, blk_t blocknr)
 {
 	int allocated;
 	if(blocknr == 0) return 0;
-	if(blocknr < ext2fs_get_generic_bitmap_start(block_map) ||
-		blocknr > ext2fs_get_generic_bitmap_end(block_map) )
+	if(blocknr < extundelete_get_generic_bitmap_start(block_map) ||
+		blocknr > extundelete_get_generic_bitmap_end(block_map) )
 	{
 		allocated = 2;
 	}
