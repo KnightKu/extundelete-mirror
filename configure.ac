@@ -68,6 +68,7 @@ AC_C_INLINE
 AC_TYPE_SIZE_T
 AC_SYS_LARGEFILE
 AC_CHECK_TYPES([blk64_t], [], [], [#include <ext2fs/ext2fs.h>])
+AC_C_BIGENDIAN()
 
 # Checks for library functions.
 AC_FUNC_MEMCMP
