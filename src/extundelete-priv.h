@@ -38,7 +38,7 @@ typedef std::pair<blk_t, block_pair_t>  journal_map_item;
 typedef std::multimap<blk_t, block_pair_t>  journal_map_t;
 extern journal_map_t journ_map;
 
-void parse_inode_block(struct ext2_inode *inode, const char *buf, ext2_ino_t ino);
+void parse_inode_block(ext2_filsys fs, struct ext2_inode *inode, const char *buf, ext2_ino_t ino);
 errcode_t recover_inode(ext2_filsys fs, ext2_filsys jfs, ext2_ino_t ino,
 		struct ext2_inode *&inode, int ver);
 int pair_names_with(ext2_filsys fs, ext2_filsys jfs, std::vector<ext2_ino_t>& inolist,

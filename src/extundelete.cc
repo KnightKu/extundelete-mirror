@@ -105,6 +105,12 @@ typedef __u64          blk64_t;
 #define EXT4_EXTENTS_FL                 0x00080000 /* Inode uses extents */
 #endif
 
+/* Various versions of libext2fs crash on either block_iterate or bmap calls,
+   so we pick one to use and hope future versions of libext2fs don't mess
+   anything up. */
+#define EXTUNDELETE_USE_BMAP 1
+
+
 __u32 extundelete_get_generic_bitmap_start(ext2fs_generic_bitmap bitmap)
 {
 #ifdef HAVE_EXT2FS_GET_GENERIC_BITMAP_START
@@ -755,12 +761,15 @@ int pair_names_with(ext2_filsys fs, ext2_filsys jfs, std::vector<ext2_ino_t>& in
 
 	if(retval == 0 && LINUX_S_ISDIR(inode->i_mode) ) {
 		blk_t *blocks = new blk_t[ numdatablocks(inode) ];
+	#if EXTUNDELETE_USE_BMAP
+		blk_t blocknr;
+		for(blk_t n = 0; n < numdatablocks(inode); n++) {
+			ext2fs_bmap(fs, ino, inode, buf, 0, n, &blocknr);
+			blocks[n] = blocknr;
+		}
+	#else
 		local_block_iterate3 (fs, *inode, BLOCK_FLAG_DATA_ONLY, NULL, get_block_nums, blocks);
-		//blk_t blocknr;
-		//for(blk_t n = 0; n < numdatablocks(inode); n++) {
-			//ext2fs_bmap(fs, ino, inode, buf, bmapflags, n, &blocknr);
-			//blocks[n] = blocknr;
-		//}
+	#endif
 
 		for(unsigned long n = 0; n < numdatablocks(inode); n++) {
 			blk_t blknum = blocks[n];
@@ -795,9 +804,12 @@ int pair_names_with(ext2_filsys fs, ext2_filsys jfs, std::vector<ext2_ino_t>& in
 
 		for(blk_t n = 0; n < numdatablocks(inode); n++) {
 			blk_t blknum = 0;
+		#if EXTUNDELETE_USE_BMAP
+			ext2fs_bmap(fs, ino, inode, buf, 0, n, &blknum);
+		#else
 			struct nth_block nb = {n, &blknum};
 			local_block_iterate3 (fs, *inode, BLOCK_FLAG_DATA_ONLY, NULL, get_nth_block_num, &nb);
-			//ext2fs_bmap(fs, ino, inode, buf, bmapflags, n, &blknum);
+		#endif
 			// If the block is allocated, it is not valid.
 			if(extundelete_test_block_bitmap(fs->block_map, blknum))
 				continue;
@@ -876,7 +888,7 @@ int restore_directory(ext2_filsys fs, ext2_filsys jfs, ext2_ino_t dirino, std::s
 			read_journal_block(jfs, *jit, buf);
 			for(ext2_ino_t ino = firstino; ino < firstino + block_size_/inode_size_ ;
 					ino++ ) {
-				parse_inode_block(inode, buf, ino);
+				parse_inode_block(fs, inode, buf, ino);
 				// If we have a deleted copy, add to the deleted list
 				// If we have a non-deleted copy in the journal, and
 				// a newer, deleted copy, then add to the recoverable list
@@ -1347,12 +1359,15 @@ int restore_file(ext2_filsys fs, ext2_filsys jfs, const std::string& fname)
 		try {
 			//FIXME: find a way to do this without allocating that big chunk in blocks variable
 			blocks = new blk_t[ numdatablocks(inode) ];
+		#if EXTUNDELETE_USE_BMAP
+			blk_t blocknr;
+			for(blk_t n = 0; n < numdatablocks(inode); n++) {
+				ext2fs_bmap(fs, ino, inode, NULL, 0, n, &blocknr);
+				blocks[n] = blocknr;
+			}
+		#else
 			local_block_iterate3 (fs, *inode, BLOCK_FLAG_DATA_ONLY, NULL, get_block_nums, blocks);
-		//blk_t blocknr;
-		//for(blk_t n = 0; n < numdatablocks(inode); n++) {
-			//ext2fs_bmap(fs, ino, inode, buf, bmapflags, n, &blocknr);
-			//blocks[n] = blocknr;
-		//}
+		#endif
 		}
 		catch (std::exception& error) {
 			delete[] blocks;
@@ -1443,13 +1458,15 @@ int restore_file(ext2_filsys fs, ext2_filsys jfs, const std::string& fname)
 		//A bad inode may cause way too much memory to be allocated
 		try {
 			blocks3 = new blk_t[ numdatablocks(inode) ];
+		#if EXTUNDELETE_USE_BMAP
+			blk_t blocknr;
+			for(blk_t n = 0; n < numdatablocks(inode); n++) {
+				ext2fs_bmap(fs, ino, inode, NULL, 0, n, &blocknr);
+				blocks3[n] = blocknr;
+			}
+		#else
 			local_block_iterate3 (fs, *inode, BLOCK_FLAG_DATA_ONLY, NULL, get_block_nums, blocks3);
-
-		//blk_t blocknr;
-		//for(blk_t n = 0; n < numdatablocks(inode); n++) {
-			//ext2fs_bmap(fs, ino, inode, NULL, bmapflags, n, &blocknr);
-			//blocks3[n] = blocknr;
-		//}
+		#endif
 
 			// Look through copies of the blocks within the journal
 			ino2 = find_inode(fs, jfs, inode, curr_part, blocks3, SEARCH_JOURNAL);
@@ -1595,7 +1612,7 @@ errcode_t recover_inode(ext2_filsys fs, ext2_filsys jfs, ext2_ino_t ino,
 	char *buf = new char[block_size_];
 	for ( rit=oldblks2.rbegin() ; rit != oldblks2.rend(); ++rit ) {
 		read_journal_block(jfs, ((*rit).first), buf);
-		parse_inode_block(inode, buf, ino);
+		parse_inode_block(fs, inode, buf, ino);
 		if (inode->i_dtime != 0 && ((int64_t) (inode->i_dtime)) >= commandline_after &&
 				((int64_t) (inode->i_dtime)) <= commandline_before)
 		{
@@ -1674,9 +1691,12 @@ int restore_inode(ext2_filsys fs, ext2_filsys jfs, ext2_ino_t ino, const std::st
 		return EU_RESTORE_FAIL;
 	}
 	blk_t blocknum = 0;
-	//retval = ext2fs_bmap(fs, ino, inode, NULL, 0, 0, &blocknum);
+#if EXTUNDELETE_USE_BMAP
+	retval = ext2fs_bmap(fs, ino, inode, NULL, 0, 0, &blocknum);
+#else
 	struct nth_block nb = {0, &blocknum};
 	retval = local_block_iterate3 (fs, *inode, BLOCK_FLAG_DATA_ONLY, NULL, get_nth_block_num, &nb);
+#endif
 	if( retval) {
 		std::cout << "Unable to restore inode " << ino << " (" << fname;
 		std::cout << "): No data found." << std::endl;
@@ -1716,9 +1736,7 @@ int restore_inode(ext2_filsys fs, ext2_filsys jfs, ext2_ino_t ino, const std::st
 		file.open((outputdir + fname2).c_str(), std::ios::binary|std::ios::out);
 		if (file.is_open())
 		{
-			struct filebuf bufstruct = {&file, buf};
-			flag = local_block_iterate3 (fs, *inode, BLOCK_FLAG_DATA_ONLY, NULL, write_block, &bufstruct);
-/*
+		#if EXTUNDELETE_USE_BMAP
 			unsigned int numbytes;
 			unsigned int bytesread = 0;
 			int bmapflags = 0;
@@ -1742,7 +1760,10 @@ int restore_inode(ext2_filsys fs, ext2_filsys jfs, ext2_ino_t ino, const std::st
 			} while( (numbytes == block_size_) && (bytesread < EXT2_I_SIZE(inode)) );
 
 			ext2fs_file_close(infile);
-*/
+		#else
+			struct filebuf bufstruct = {&file, buf};
+			flag = local_block_iterate3 (fs, *inode, BLOCK_FLAG_DATA_ONLY, NULL, write_block, &bufstruct);
+		#endif
 			file.close();
 
 			if(!flag) {
@@ -1785,50 +1806,17 @@ int restore_inode(ext2_filsys fs, ext2_filsys jfs, ext2_ino_t ino, const std::st
 	return retval;
 }
 
-void parse_inode_block(struct ext2_inode *inode, const char *buf, ext2_ino_t ino)
+void parse_inode_block(ext2_filsys fs, struct ext2_inode *inode, const char *buf, ext2_ino_t ino)
 {
 	int offset = (ino-1) % (block_size_/inode_size_);
 	const char *inodebuf = buf + offset*inode_size_;
-	int item = sizeof(uint16_t)/sizeof(char);
-	inode->i_mode = le16_to_cpu( (uint16_t *) inodebuf );
-	inode->i_uid = le16_to_cpu( (uint16_t *) &inodebuf[item*1] );
-	inode->i_size = le32_to_cpu( (uint32_t *) &inodebuf[item*2] );
-	inode->i_atime = le32_to_cpu( (uint32_t *) &inodebuf[item*4] );
-	inode->i_ctime = le32_to_cpu( (uint32_t *) &inodebuf[item*6] );
-	inode->i_mtime = le32_to_cpu( (uint32_t *) &inodebuf[item*8] );
-	inode->i_dtime = le32_to_cpu( (uint32_t *) &inodebuf[item*10] );
-	inode->i_gid = le16_to_cpu( (uint16_t *) &inodebuf[item*12] );
-	inode->i_links_count = le16_to_cpu( (uint16_t *) &inodebuf[item*13] );
-	inode->i_blocks = le32_to_cpu( (uint32_t *) &inodebuf[item*14] );
-	inode->i_flags = le32_to_cpu( (uint32_t *) &inodebuf[item*16] );
-	// The next part of the structure was renamed in e2fsprogs 1.40 (2007).
-	// We skip using it for compatibility with old e2fsprogs for now.
-	// inode->i_reserved1 = le32_to_cpu( (uint32_t *) &inodebuf[item*18] );
-	//FIXME: Double-check that this results in the correct inode with extents.
-	if(inode->i_flags & EXT4_EXTENTS_FL) {
-		/* Extent data are byte-swapped on access, not on read from disk */
-		for(int n=0; n < EXT2_N_BLOCKS; n++) {
-			inode->i_block[n] = *( (uint32_t *) &inodebuf[item*(20 + 2*n)] );
-		}
-	}
-	else {
-		for(int n=0; n < EXT2_N_BLOCKS; n++) {
-			inode->i_block[n] = le32_to_cpu( (uint32_t *) &inodebuf[item*(20 + 2*n)] );
-		}
-	}
-	inode->i_generation = le32_to_cpu( (uint32_t *) &inodebuf[item*48] );
-	//FIXME: file_acl is a block number of the extended attributes: we
-	// should restore that block along with the file.
-	inode->i_file_acl = le32_to_cpu( (uint32_t *) &inodebuf[item*50] );
-	inode->i_dir_acl = le32_to_cpu( (uint32_t *) &inodebuf[item*52] );
-	inode->i_faddr = le32_to_cpu( (uint32_t *) &inodebuf[item*54] );
-	//inode->i_frag = inodebuf[item*56];
-	//inode->i_fsize = inodebuf[item*56 + sizeof(inode->i_frag)];
-	// Gap in useful info of 16 bits here.
-  //FIXME: need to change behavior depending on the fs operating system
-	inode->osd2.linux2.l_i_uid_high = le16_to_cpu( (uint16_t *) &inodebuf[item*58] );
-	inode->osd2.linux2.l_i_gid_high = le16_to_cpu( (uint16_t *) &inodebuf[item*60] );
-	inode->osd2.linux2.l_i_reserved2 = le32_to_cpu( (uint32_t *) &inodebuf[item*62] );
+#ifdef WORDS_BIGENDIAN
+	int n = 1 ;
+	int hostorder = (*(char *) &n != 1);
+	ext2fs_swap_inode(fs, inode, (struct ext2_inode *) inodebuf, hostorder);
+#else
+	memcpy(inode, inodebuf, EXT2_GOOD_OLD_INODE_SIZE );
+#endif
 }
 
 int get_journal_fs (ext2_filsys fs, ext2_filsys *jfs, std::string journal_filename) {
