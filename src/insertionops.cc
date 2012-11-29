@@ -63,7 +63,7 @@ std::ostream& operator<<(std::ostream& os, const ext2_super_block* const s_block
   os << "Block size: " << EXT2_BLOCK_SIZE(s_block) << std::endl;
   os << "Fragment size: " << EXT2_FRAG_SIZE(s_block) << std::endl;
   os << "# Blocks per group: " << s_block->s_blocks_per_group << std::endl;
-  os << "# Fragments per group: " << s_block->s_frags_per_group << std::endl;
+  os << "# Fragments per group: " << EXT2_FRAGS_PER_BLOCK(s_block) << std::endl;
   os << "# Inodes per group: " << s_block->s_inodes_per_group << std::endl;
   os << "Mount time: " << s_block->s_mtime << std::endl;
   os << "Write time: " << s_block->s_wtime << std::endl;
