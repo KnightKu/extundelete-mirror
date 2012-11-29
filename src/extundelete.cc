@@ -382,6 +382,18 @@ void journal_superblock_to_cpu(char *jsb)
 }
 
 
+static int extundelete_use_bmap() {
+	const char *ver;
+	int use_bmap = 0;
+	double version = 0.0;
+	ext2fs_get_library_version (&ver, NULL);
+	version = strtod(ver, NULL);
+	if(version > 1.41) {
+		use_bmap = 1;
+	}
+	return use_bmap;
+}
+
 void print_version(void)
 {
 	std::cout << "extundelete version " << VERSION << std::endl;
