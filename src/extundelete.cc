@@ -105,11 +105,6 @@ typedef __u64          blk64_t;
 #define EXT4_EXTENTS_FL                 0x00080000 /* Inode uses extents */
 #endif
 
-/* Various versions of libext2fs crash on either block_iterate or bmap calls,
-   so we pick one to use and hope future versions of libext2fs don't mess
-   anything up. */
-#define EXTUNDELETE_USE_BMAP 1
-
 
 __u32 extundelete_get_generic_bitmap_start(ext2fs_generic_bitmap bitmap)
 {
@@ -773,15 +768,15 @@ int pair_names_with(ext2_filsys fs, ext2_filsys jfs, std::vector<ext2_ino_t>& in
 
 	if(retval == 0 && LINUX_S_ISDIR(inode->i_mode) ) {
 		blk_t *blocks = new blk_t[ numdatablocks(inode) ];
-	#if EXTUNDELETE_USE_BMAP
-		blk_t blocknr;
-		for(blk_t n = 0; n < numdatablocks(inode); n++) {
-			ext2fs_bmap(fs, ino, inode, buf, 0, n, &blocknr);
-			blocks[n] = blocknr;
+		if(extundelete_use_bmap() ) {
+			blk_t blocknr;
+			for(blk_t n = 0; n < numdatablocks(inode); n++) {
+				ext2fs_bmap(fs, ino, inode, buf, 0, n, &blocknr);
+				blocks[n] = blocknr;
+			}
+		} else {
+			local_block_iterate3 (fs, *inode, BLOCK_FLAG_DATA_ONLY, NULL, get_block_nums, blocks);
 		}
-	#else
-		local_block_iterate3 (fs, *inode, BLOCK_FLAG_DATA_ONLY, NULL, get_block_nums, blocks);
-	#endif
 
 		for(unsigned long n = 0; n < numdatablocks(inode); n++) {
 			blk_t blknum = blocks[n];
@@ -816,12 +811,12 @@ int pair_names_with(ext2_filsys fs, ext2_filsys jfs, std::vector<ext2_ino_t>& in
 
 		for(blk_t n = 0; n < numdatablocks(inode); n++) {
 			blk_t blknum = 0;
-		#if EXTUNDELETE_USE_BMAP
-			ext2fs_bmap(fs, ino, inode, buf, 0, n, &blknum);
-		#else
-			struct nth_block nb = {n, &blknum};
-			local_block_iterate3 (fs, *inode, BLOCK_FLAG_DATA_ONLY, NULL, get_nth_block_num, &nb);
-		#endif
+			if(extundelete_use_bmap() ) {
+				ext2fs_bmap(fs, ino, inode, buf, 0, n, &blknum);
+			} else {
+				struct nth_block nb = {n, &blknum};
+				local_block_iterate3 (fs, *inode, BLOCK_FLAG_DATA_ONLY, NULL, get_nth_block_num, &nb);
+			}
 			// If the block is allocated, it is not valid.
 			if(extundelete_test_block_bitmap(fs->block_map, blknum))
 				continue;
@@ -1371,15 +1366,15 @@ int restore_file(ext2_filsys fs, ext2_filsys jfs, const std::string& fname)
 		try {
 			//FIXME: find a way to do this without allocating that big chunk in blocks variable
 			blocks = new blk_t[ numdatablocks(inode) ];
-		#if EXTUNDELETE_USE_BMAP
-			blk_t blocknr;
-			for(blk_t n = 0; n < numdatablocks(inode); n++) {
-				ext2fs_bmap(fs, ino, inode, NULL, 0, n, &blocknr);
-				blocks[n] = blocknr;
+			if(extundelete_use_bmap() ) {
+				blk_t blocknr;
+				for(blk_t n = 0; n < numdatablocks(inode); n++) {
+					ext2fs_bmap(fs, ino, inode, NULL, 0, n, &blocknr);
+					blocks[n] = blocknr;
+				}
+			} else {
+				local_block_iterate3 (fs, *inode, BLOCK_FLAG_DATA_ONLY, NULL, get_block_nums, blocks);
 			}
-		#else
-			local_block_iterate3 (fs, *inode, BLOCK_FLAG_DATA_ONLY, NULL, get_block_nums, blocks);
-		#endif
 		}
 		catch (std::exception& error) {
 			delete[] blocks;
@@ -1470,15 +1465,15 @@ int restore_file(ext2_filsys fs, ext2_filsys jfs, const std::string& fname)
 		//A bad inode may cause way too much memory to be allocated
 		try {
 			blocks3 = new blk_t[ numdatablocks(inode) ];
-		#if EXTUNDELETE_USE_BMAP
-			blk_t blocknr;
-			for(blk_t n = 0; n < numdatablocks(inode); n++) {
-				ext2fs_bmap(fs, ino, inode, NULL, 0, n, &blocknr);
-				blocks3[n] = blocknr;
+			if(extundelete_use_bmap() ) {
+				blk_t blocknr;
+				for(blk_t n = 0; n < numdatablocks(inode); n++) {
+					ext2fs_bmap(fs, ino, inode, NULL, 0, n, &blocknr);
+					blocks3[n] = blocknr;
+				}
+			} else {
+				local_block_iterate3 (fs, *inode, BLOCK_FLAG_DATA_ONLY, NULL, get_block_nums, blocks3);
 			}
-		#else
-			local_block_iterate3 (fs, *inode, BLOCK_FLAG_DATA_ONLY, NULL, get_block_nums, blocks3);
-		#endif
 
 			// Look through copies of the blocks within the journal
 			ino2 = find_inode(fs, jfs, inode, curr_part, blocks3, SEARCH_JOURNAL);
@@ -1703,12 +1698,12 @@ int restore_inode(ext2_filsys fs, ext2_filsys jfs, ext2_ino_t ino, const std::st
 		return EU_RESTORE_FAIL;
 	}
 	blk_t blocknum = 0;
-#if EXTUNDELETE_USE_BMAP
-	retval = ext2fs_bmap(fs, ino, inode, NULL, 0, 0, &blocknum);
-#else
-	struct nth_block nb = {0, &blocknum};
-	retval = local_block_iterate3 (fs, *inode, BLOCK_FLAG_DATA_ONLY, NULL, get_nth_block_num, &nb);
-#endif
+	if(extundelete_use_bmap() ) {
+		retval = ext2fs_bmap(fs, ino, inode, NULL, 0, 0, &blocknum);
+	} else {
+		struct nth_block nb = {0, &blocknum};
+		retval = local_block_iterate3 (fs, *inode, BLOCK_FLAG_DATA_ONLY, NULL, get_nth_block_num, &nb);
+	}
 	if( retval) {
 		std::cout << "Unable to restore inode " << ino << " (" << fname;
 		std::cout << "): No data found." << std::endl;
@@ -1748,34 +1743,34 @@ int restore_inode(ext2_filsys fs, ext2_filsys jfs, ext2_ino_t ino, const std::st
 		file.open((outputdir + fname2).c_str(), std::ios::binary|std::ios::out);
 		if (file.is_open())
 		{
-		#if EXTUNDELETE_USE_BMAP
-			unsigned int numbytes;
-			unsigned int bytesread = 0;
-			int bmapflags = 0;
-			blk_t n = 0;
-			ext2_file_t infile;
-			ext2fs_file_open2(fs, ino, inode, 0, &infile);
-			blk_t blocknr;
-			do {
-				ext2fs_bmap(fs, ino, inode, buf, bmapflags, n, &blocknr);
-				int allocated = extundelete_test_block_bitmap(fs->block_map, blocknr);
-				if(!allocated) {
-					ext2fs_file_read (infile, buf, block_size_, &numbytes);
-					bytesread += numbytes;
-					file.write (buf, numbytes);
-				}
-				else {
-					flag = -1;
-					break;
-				}
-				n++;
-			} while( (numbytes == block_size_) && (bytesread < EXT2_I_SIZE(inode)) );
+			if(extundelete_use_bmap() ) {
+				unsigned int numbytes;
+				unsigned int bytesread = 0;
+				int bmapflags = 0;
+				blk_t n = 0;
+				ext2_file_t infile;
+				ext2fs_file_open2(fs, ino, inode, 0, &infile);
+				blk_t blocknr;
+				do {
+					ext2fs_bmap(fs, ino, inode, buf, bmapflags, n, &blocknr);
+					int allocated = extundelete_test_block_bitmap(fs->block_map, blocknr);
+					if(!allocated) {
+						ext2fs_file_read (infile, buf, block_size_, &numbytes);
+						bytesread += numbytes;
+						file.write (buf, numbytes);
+					}
+					else {
+						flag = -1;
+						break;
+					}
+					n++;
+				} while( (numbytes == block_size_) && (bytesread < EXT2_I_SIZE(inode)) );
 
-			ext2fs_file_close(infile);
-		#else
-			struct filebuf bufstruct = {&file, buf};
-			flag = local_block_iterate3 (fs, *inode, BLOCK_FLAG_DATA_ONLY, NULL, write_block, &bufstruct);
-		#endif
+				ext2fs_file_close(infile);
+			} else {
+				struct filebuf bufstruct = {&file, buf};
+				flag = local_block_iterate3 (fs, *inode, BLOCK_FLAG_DATA_ONLY, NULL, write_block, &bufstruct);
+			}
 			file.close();
 
 			if(!flag) {
