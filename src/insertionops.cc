@@ -21,7 +21,7 @@ std::ostream& operator<<(std::ostream& os, const ext2_inode& inode)
 
   os << "File mode: " << inode.i_mode << std::endl;
   os << "Low 16 bits of Owner Uid: " << inode.i_uid << std::endl;
-  os << "Size in bytes: " << inode.i_size << std::endl;
+  os << "Size in bytes: " << EXT2_I_SIZE(&inode) << std::endl;
   os << "Access time: " << inode.i_atime << std::endl;
   os << "Creation time: " << inode.i_ctime << std::endl;
   os << "Modification time: " << inode.i_mtime << std::endl;
