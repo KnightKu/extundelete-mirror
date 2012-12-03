@@ -2,7 +2,7 @@
 # Process this file with "./autogen.sh" to produce a configure script.
 
 AC_PREREQ(2.59)
-AC_INIT(extundelete, 0.2.0, extundelete.sourceforge.net)
+AC_INIT(extundelete, 0.2.1, extundelete.sourceforge.net)
 echo "Configuring ${PACKAGE_STRING}"
 AM_INIT_AUTOMAKE([-Wall -Werror foreign])
 AC_CONFIG_SRCDIR([src/extundelete.cc])
@@ -54,6 +54,9 @@ AC_CHECK_LIB([ext2fs], [ext2fs_bmap], [],[
            AC_MSG_ERROR([Can't find ext2fs library])] )
 AC_CHECK_FUNCS([ext2fs_get_generic_bitmap_start])
 AC_CHECK_FUNCS([ext2fs_inode_table_loc])
+AC_CHECK_FUNCS([ext2fs_extent_open2])
+AC_CHECK_FUNCS([ext2fs_blocks_count])
+AC_CHECK_FUNCS([ext2fs_get_array])
 AC_CHECK_LIB([com_err], [com_err], [],[
            AC_MSG_ERROR([Can't find com_err library])] )
 

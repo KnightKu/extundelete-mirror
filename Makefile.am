@@ -15,10 +15,11 @@ profile-am: Makefile config.h
 jdebug-am: Makefile config.h
 nodebug-am: Makefile config.h
 
-package: clean
+release: clean
 	-rm -f aclocal.m4
 	-touch -r config.h.in aclocal.m4
-	$(MAKE) $(AM_MAKEFLAGS) $(@:package=dist-bzip2)
+	$(MAKE) $(AM_MAKEFLAGS) $(@:release=dist-bzip2)
+	-echo "Generated release of $(PACKAGE_STRING)"
 
 clean-local:
 	-rm -f config.h.in~
