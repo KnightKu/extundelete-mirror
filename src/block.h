@@ -23,18 +23,6 @@ struct dir_context {
         errcode_t       errcode;
 };
 
-errcode_t local_block_iterate3(ext2_filsys fs,
-				struct ext2_inode inode,
-				int	flags,
-				char *block_buf,
-				int (*func)(ext2_filsys fs,
-					    blk_t	*blocknr,
-					    e2_blkcnt_t	blockcnt,
-					    blk_t	ref_blk,
-					    int		ref_offset,
-					    void	*priv_data),
-				void *priv_data);
-
 int extundelete_process_dir_block(ext2_filsys fs,
 			     blk_t	*blocknr,
 			     e2_blkcnt_t blockcnt,

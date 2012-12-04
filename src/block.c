@@ -36,6 +36,7 @@ typedef __u64          blk64_t;
 #define EXT2_ET_RO_BLOCK_ITERATE (2133571435L)
 #endif
 
+
 #ifndef HAVE_EXT2FS_BLOCKS_COUNT
 /* This enables proper operation with libext2fs 1.39  - 1.41.x */
 static blk64_t ext2fs_blocks_count(struct ext2_super_block *super)
@@ -43,6 +44,7 @@ static blk64_t ext2fs_blocks_count(struct ext2_super_block *super)
         return super->s_blocks_count;
 }
 #endif
+
 
 #ifndef HAVE_EXT2FS_GET_ARRAY
 /* This enables proper operation with libext2fs 1.39  - 1.40.2 */
@@ -80,6 +82,7 @@ struct ext2_extent_handle {
 	int			max_depth;
 	struct extent_path	*path;
 };
+
 
 static errcode_t ext2fs_extent_open2(ext2_filsys fs, ext2_ino_t ino,
                                     struct ext2_inode *inode,
@@ -173,7 +176,6 @@ errout:
 #endif
 
 
-
 struct block_context {
 	ext2_filsys	fs;
 	int (*func)(ext2_filsys	fs,
@@ -212,6 +214,7 @@ struct block_context {
 			goto label;					\
 		}							\
 	} while (0)
+
 
 static int block_iterate_ind(blk_t *ind_block, blk_t ref_block,
 			     int ref_offset, struct block_context *ctx)
@@ -302,6 +305,7 @@ static int block_iterate_ind(blk_t *ind_block, blk_t ref_block,
 	return ret;
 }
 
+
 static int block_iterate_dind(blk_t *dind_block, blk_t ref_block,
 			      int ref_offset, struct block_context *ctx)
 {
@@ -387,6 +391,7 @@ static int block_iterate_dind(blk_t *dind_block, blk_t ref_block,
 	check_for_ro_violation_return(ctx, ret);
 	return ret;
 }
+
 
 static int block_iterate_tind(blk_t *tind_block, blk_t ref_block,
 			      int ref_offset, struct block_context *ctx)
@@ -475,15 +480,6 @@ static int block_iterate_tind(blk_t *tind_block, blk_t ref_block,
 }
 
 
-
-
-
-
-
-
-
-
-
 /*
  * This function checks to see whether or not a potential deleted
  * directory entry looks valid.  What we do is check the deleted entry
@@ -512,6 +508,7 @@ static int extundelete_validate_entry(ext2_filsys fs, char *buf,
 	}
 	return (offset == final_offset);
 }
+
 
 int extundelete_process_dir_block(ext2_filsys fs,
 			     blk_t	*blocknr,
@@ -604,7 +601,6 @@ next:
 		return BLOCK_ABORT;
 	return 0;
 }
-
 
 
 errcode_t extundelete_block_iterate3(ext2_filsys fs,
@@ -758,9 +754,9 @@ errcode_t extundelete_block_iterate3(ext2_filsys fs,
 			       extent.e_lblk, extent.e_pblk,
 			       extent.e_len, blockcnt);
 #endif
-			if (extent.e_lblk + extent.e_len <= blockcnt)
+			if (extent.e_lblk + extent.e_len <= (blk64_t) blockcnt)
 				continue;
-			if (extent.e_lblk > blockcnt)
+			if (extent.e_lblk > (blk64_t) blockcnt)
 				blockcnt = extent.e_lblk;
 			j = blockcnt - extent.e_lblk;
 			blk += j;
@@ -846,55 +842,4 @@ errout:
 
 	return (ret & BLOCK_ERROR) ? ctx.errcode : 0;
 }
-
-
-/*
- * Emulate the old ext2fs_block_iterate function!
- */
-
-struct xlate64 {
-	int (*func)(ext2_filsys fs,
-		    blk_t	*blocknr,
-		    e2_blkcnt_t	blockcnt,
-		    blk_t	ref_blk,
-		    int		ref_offset,
-		    void	*priv_data);
-	void *real_private;
-};
-
-static int xlate64_func(ext2_filsys fs, blk64_t	*blocknr,
-			e2_blkcnt_t blockcnt, blk64_t ref_blk,
-			int ref_offset, void *priv_data)
-{
-	struct xlate64 *xl = (struct xlate64 *) priv_data;
-	int		ret;
-	blk_t		block32 = *blocknr;
-	
-	ret = (*xl->func)(fs, &block32, blockcnt, (blk_t) ref_blk, ref_offset,
-			     xl->real_private);
-	*blocknr = block32;
-	return ret;
-}
-
-errcode_t local_block_iterate3(ext2_filsys fs,
-				struct ext2_inode inode,
-				int	flags,
-				char *block_buf,
-				int (*func)(ext2_filsys fs,
-					    blk_t	*blocknr,
-					    e2_blkcnt_t	blockcnt,
-					    blk_t	ref_blk,
-					    int		ref_offset,
-					    void	*priv_data),
-				void *priv_data)
-{
-	struct xlate64 xl;
-
-	xl.real_private = priv_data;
-	xl.func = func;
-
-	return extundelete_block_iterate3(fs, inode, flags, block_buf, 
-				     xlate64_func, &xl);
-}
-
 
