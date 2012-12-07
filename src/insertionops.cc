@@ -202,7 +202,7 @@ std::ostream& operator<<(std::ostream& os, journal_header_t const& journal_heade
 std::ostream& operator<<(std::ostream& os, const journal_revoke_header_t journal_revoke_header)
 {
   os << journal_revoke_header.r_header << std::endl;
-  int count = journal_revoke_header.r_count;
+  size_t count = journal_revoke_header.r_count;
   os << "Bytes used: " << count << std::endl;
   //assert(sizeof(journal_revoke_header_t) <= static_cast<unsigned int>(count) && count <= block_size_);
   count -= sizeof(journal_revoke_header_t);
