@@ -511,7 +511,7 @@ static int extundelete_validate_entry(ext2_filsys fs, char *buf,
 
 
 int extundelete_process_dir_block(ext2_filsys fs,
-			     blk_t	*blocknr,
+			     blk64_t	*blocknr,
 			     e2_blkcnt_t blockcnt,
 			     blk_t	ref_block EXT2FS_ATTR((unused)),
 			     int	ref_offset EXT2FS_ATTR((unused)),
@@ -523,9 +523,10 @@ int extundelete_process_dir_block(ext2_filsys fs,
 	int		ret = 0;
 	int		changed = 0;
 	int		do_abort = 0;
-	int		rec_len, entry, size;
+	unsigned int		rec_len, size;
+	int		entry;
 	struct ext2_dir_entry *dirent;
-	int dirent_min_len = 12;
+	unsigned int dirent_min_len = 12;
 
 	if (blockcnt < 0)
 		return 0;
@@ -539,11 +540,11 @@ int extundelete_process_dir_block(ext2_filsys fs,
 	while (offset <= fs->blocksize - dirent_min_len) {
 		dirent = (struct ext2_dir_entry *) (ctx->buf + offset);
 		rec_len = (dirent->rec_len || fs->blocksize < 65536) ?
-			dirent->rec_len : 65536;
+			dirent->rec_len : 65536U;
 		if (((offset + rec_len) > fs->blocksize) ||
 		    (rec_len < 8) ||
 		    ((rec_len % 4) != 0) ||
-		    (((dirent->name_len & 0xFF)+8) > rec_len)) {
+		    (((dirent->name_len & 0xFF)+8U) > rec_len)) {
 			ctx->errcode = EXT2_ET_DIR_CORRUPTED;
 			return BLOCK_ABORT;
 		}
@@ -620,7 +621,7 @@ errcode_t extundelete_block_iterate3(ext2_filsys fs,
 	ext2_ino_t ino = 0;
 	errcode_t	retval;
 	struct block_context ctx;
-	int	limit;
+	unsigned int	limit;
 	blk64_t	blk64;
 
 	EXT2_CHECK_MAGIC(fs, EXT2_ET_MAGIC_EXT2FS_FILSYS);

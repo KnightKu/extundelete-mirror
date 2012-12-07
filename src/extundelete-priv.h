@@ -22,7 +22,7 @@ extern uint32_t block_size_;
 extern uint16_t inode_size_;
 
 // Information from journal
-typedef std::vector<blk_t>  block_list_t;
+typedef std::vector<blk64_t>  block_list_t;
 extern std::vector<uint32_t> tag_seq;
 extern block_list_t tag_jblk;
 extern block_list_t tag_fsblk;
@@ -33,9 +33,9 @@ extern block_list_t rvk_block;
  * in that order, for each descriptor in the journal.
  * block_pair_t is (journal block number, sequence number).
 */
-typedef std::pair<blk_t, uint32_t>   block_pair_t;
-typedef std::pair<blk_t, block_pair_t>  journal_map_item;
-typedef std::multimap<blk_t, block_pair_t>  journal_map_t;
+typedef std::pair<blk64_t, uint32_t>   block_pair_t;
+typedef std::pair<blk64_t, block_pair_t>  journal_map_item;
+typedef std::multimap<blk64_t, block_pair_t>  journal_map_t;
 extern journal_map_t journ_map;
 
 static void parse_inode_block(ext2_filsys fs, struct ext2_inode *inode, const char *buf, ext2_ino_t ino);

@@ -13,6 +13,9 @@
 
 #include <sys/types.h>
 #include <ext2fs/ext2fs.h>
+#ifndef HAVE_BLK64_T
+typedef __u64		blk64_t;
+#endif
 #include "kernel-jbd.h"
 
 #define SEARCH_JOURNAL 1
@@ -77,9 +80,9 @@ void print_version(void);
 // Main implementation function declarations
 int load_super_block(ext2_filsys fs);
 int init_journal(ext2_filsys fs, ext2_filsys jfs, journal_superblock_t *jsb);
-int restore_file(ext2_filsys fs, ext2_filsys jfs, const std::string& fname);
-int restore_inode(ext2_filsys fs, ext2_filsys jfs, ext2_ino_t ino, const std::string& dname);
-int read_journal_block(ext2_filsys fs, blk_t n, char *buf);
+errcode_t restore_file(ext2_filsys fs, ext2_filsys jfs, const std::string& fname);
+errcode_t restore_inode(ext2_filsys fs, ext2_filsys jfs, ext2_ino_t ino, const std::string& dname);
+int read_journal_block(ext2_filsys fs, blk64_t n, char *buf);
 errcode_t read_block(ext2_filsys fs, blk_t *blocknr, e2_blkcnt_t blockcnt,
 		blk_t /*ref_blk*/, int /*ref_offset*/, void *buf);
 int restore_directory(ext2_filsys fs, ext2_filsys jfs, ext2_ino_t dirino, std::string dirname);
@@ -87,7 +90,7 @@ int get_journal_fs (ext2_filsys fs, ext2_filsys *jfs, std::string journal_filena
 int read_journal_superblock (ext2_filsys fs, ext2_filsys jfs,
 		journal_superblock_t *journal_superblock);
 int print_inode(ext2_filsys fs, ext2_ino_t ino);
-void classify_block(ext2_filsys fs, blk_t blocknr);
+void classify_block(ext2_filsys fs, blk64_t blocknr);
 int extundelete_make_outputdir(const char * const dirname, const char * const progname);
 
 // From insertionops.cc
