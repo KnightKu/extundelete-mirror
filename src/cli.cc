@@ -74,6 +74,67 @@ long commandline_before = LONG_MAX;
 long commandline_after = 0;
 
 
+static void print_version(void)
+{
+	std::cout << "extundelete version " << VERSION << std::endl;
+
+	const char *ver;
+	ext2fs_get_library_version (&ver, NULL);
+	std::cout << "libext2fs version " << ver << std::endl;
+
+	int n = 1 ;
+	if(*(char *) &n == 1)  // True if the cpu is little endian.
+		std::cout << "Processor is little endian." << std::endl;
+	else
+		std::cout << "Processor is big endian." << std::endl;
+}
+
+
+static void print_usage(std::ostream& os, std::string progname)
+{
+  os << "Usage: " << progname << " [options] [--] device-file\n";
+  os << "Options:\n";
+  os << "  --version, -[vV]       Print version and exit successfully.\n";
+  os << "  --help,                Print this help and exit successfully.\n";
+  os << "  --superblock           Print contents of superblock in addition to the rest.\n";
+  os << "                         If no action is specified then this option is implied.\n";
+  os << "  --journal              Show content of journal.\n";
+  os << "  --after dtime          Only process entries deleted on or after 'dtime'.\n";
+  os << "  --before dtime         Only process entries deleted before 'dtime'.\n";
+  os << "Actions:\n";
+  os << "  --inode ino            Show info on inode 'ino'.\n";
+  os << "  --block blk            Show info on block 'blk'.\n";
+  os << "  --restore-inode ino[,ino,...]\n";
+  os << "                         Restore the file(s) with known inode number 'ino'.\n";
+  os << "                         The restored files are created in ./RECOVERED_FILES\n";
+  os << "                         with their inode number as extension (ie, file.12345).\n";
+  os << "  --restore-file 'path'  Will restore file 'path'. 'path' is relative to root\n";
+  os << "                         of the partition and does not start with a '/' (it\n";
+  os << "                         must be one of the paths returned by --dump-names).\n";
+  os << "                         The restored file is created in the current\n";
+  os << "                         directory as 'RECOVERED_FILES/path'.\n";
+  os << "  --restore-files 'path' Will restore files which are listed in the file 'path'.\n";
+  os << "                         Each filename should be in the same format as an option\n";
+  os << "                         to --restore-file, and there should be one per line.\n";
+  os << "  --restore-all          Attempts to restore everything.\n";
+  os << "  -j journal             Reads an external journal from the named file.\n";
+  os << "  -b blocknumber         Uses the backup superblock at blocknumber when opening\n";
+  os << "                         the file system.\n";
+  os << "  -B blocksize           Uses blocksize as the block size when opening the file\n";
+  os << "                         system.  The number should be the number of bytes.\n";
+  os << "  --log 0                Make the program silent.\n";
+  os << "  --log filename         Logs all messages to filename.\n";
+  os << "--log D1=0,D2=filename   Custom control of log messages with comma-separated\n";
+  os << "   Examples below:       list of options.  Dn must be one of info, warn, or\n";
+  os << "   --log info,error      error.  Omission of the '=name' results in messages\n";
+  os << "   --log warn=0          with the specified level to be logged to the console.\n";
+  os << "   --log error=filename  If the parameter is '=0', logging for the specified\n";
+  os << "                         level will be turned off.  If the parameter is\n";
+  os << "                         '=filename', messages with that level will be written\n";
+  os << "                         to filename.\n";
+}
+
+
 static errcode_t examine_fs(ext2_filsys fs)
 {
 	errcode_t errcode;

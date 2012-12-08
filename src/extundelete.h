@@ -73,10 +73,6 @@ struct filebuf
 
 
 // Function declarations
-// Helper function declarations
-void print_usage(std::ostream& os, std::string progname);
-void print_version(void);
-
 // Main implementation function declarations
 int load_super_block(ext2_filsys fs);
 int init_journal(ext2_filsys fs, ext2_filsys jfs, journal_superblock_t *jsb);
