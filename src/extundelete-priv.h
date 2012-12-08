@@ -12,14 +12,11 @@
 #include <ext2fs/ext2fs.h>
 
 // Global variables
-#ifndef VERSION
-#define VERSION "0.1.9";
-#endif
 extern std::string outputdir;
 
 // Frequently used constant values from the superblock.
 extern uint32_t block_size_;
-extern uint16_t inode_size_;
+extern unsigned int inode_size_;
 
 // Information from journal
 typedef std::vector<blk64_t>  block_list_t;

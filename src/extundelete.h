@@ -82,7 +82,7 @@ int load_super_block(ext2_filsys fs);
 int init_journal(ext2_filsys fs, ext2_filsys jfs, journal_superblock_t *jsb);
 errcode_t restore_file(ext2_filsys fs, ext2_filsys jfs, const std::string& fname);
 errcode_t restore_inode(ext2_filsys fs, ext2_filsys jfs, ext2_ino_t ino, const std::string& dname);
-int read_journal_block(ext2_filsys fs, blk64_t n, char *buf);
+errcode_t read_journal_block(ext2_filsys fs, blk64_t n, char *buf);
 errcode_t read_block(ext2_filsys fs, blk_t *blocknr, e2_blkcnt_t blockcnt,
 		blk_t /*ref_blk*/, int /*ref_offset*/, void *buf);
 int restore_directory(ext2_filsys fs, ext2_filsys jfs, ext2_ino_t dirino, std::string dirname);
@@ -106,5 +106,16 @@ std::ostream& operator<<(std::ostream& os, journal_superblock_t const& journal_s
 extern std::string commandline_restore_directory;
 extern long commandline_before;
 extern long commandline_after;
+
+namespace Log {
+extern std::ostream error;
+extern std::ostream warn;
+extern std::ostream info;
+extern std::ostream debug;
+extern std::ofstream efile;
+extern std::ofstream wfile;
+extern std::ofstream ifile;
+extern std::ofstream dfile;
+}
 
 #endif //EXTUNDELETE_H

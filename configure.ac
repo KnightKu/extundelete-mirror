@@ -58,7 +58,7 @@ AC_SUBST([EU_OPTXXFLAGS])
 # Checks for libraries.
 AC_CHECK_LIB([ext2fs], [ext2fs_bmap], [],[
            AC_MSG_ERROR([Can't find ext2fs library])] )
-AC_CHECK_FUNCS([ext2fs_get_generic_bitmap_start ext2fs_inode_table_loc ext2fs_extent_open2 ext2fs_blocks_count ext2fs_get_array ext2fs_get_generic_bmap_start ext2fs_test_block_bitmap2 ext2fs_bmap2 ext2fs_test_block_bitmap2 ext2fs_group_of_blk2 ext2fs_read_dir_block3 ])
+AC_CHECK_FUNCS([ext2fs_get_generic_bitmap_start ext2fs_inode_table_loc ext2fs_extent_open2 ext2fs_blocks_count ext2fs_get_array ext2fs_get_generic_bmap_start ext2fs_test_block_bitmap2 ext2fs_bmap2 ext2fs_test_block_bitmap2 ext2fs_group_of_blk2 ext2fs_read_dir_block3 ext2fs_test_inode_bitmap2])
 AC_CHECK_LIB([com_err], [com_err], [],[
            AC_MSG_ERROR([Can't find com_err library])] )
 
