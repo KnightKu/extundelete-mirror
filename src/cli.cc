@@ -64,7 +64,7 @@ static ext2_ino_t commandline_inode_to_block = 0;
 static ext2_ino_t commandline_show_journal_inodes = 0;
 
 static blk_t commandline_backup_superblock = 0;
-static blk_t commandline_block = 0;
+static blk64_t commandline_block = 0;
 static blk_t commandline_block_size = 0;
 static blk_t commandline_journal_block = 0;
 
@@ -74,7 +74,7 @@ long commandline_before = LONG_MAX;
 long commandline_after = 0;
 
 
-int examine_fs(ext2_filsys fs)
+static errcode_t examine_fs(ext2_filsys fs)
 {
 	errcode_t errcode;
 
@@ -85,13 +85,13 @@ int examine_fs(ext2_filsys fs)
 
 	if (commandline_action)
 	{
-		std::cout << "Loading filesystem metadata ... " << std::flush;
+		Log::info << "Loading filesystem metadata ... " << std::flush;
 		/* Note: for a 1 TB partition with 4k block size, these bitmaps
 		 * require 40 MB memory. */
 		errcode = ext2fs_read_inode_bitmap(fs);
 		errcode |= ext2fs_read_block_bitmap(fs);
 		if (errcode) return errcode;
-		std::cout << fs->super->s_inodes_count / fs->super->s_inodes_per_group
+		Log::info << fs->super->s_inodes_count / fs->super->s_inodes_per_group
 		<< " groups loaded." << std::endl;
 	}
 
@@ -338,7 +338,7 @@ int examine_fs(ext2_filsys fs)
 }
 
 //FIXME: Some of the string conversions are to long values that get stored as ints.
-int decode_options(int& argc, char**& argv)
+static int decode_options(int& argc, char**& argv)
 {
 	int short_option;
 	static int long_option;
@@ -360,7 +360,8 @@ int decode_options(int& argc, char**& argv)
 		opt_restore_directory,
 		opt_restore_inode,
 		opt_restore_all,
-		opt_help
+		opt_help,
+		opt_log
 	};
 	struct option longopts[] = {
 		{"help", 0, &long_option, opt_help},
@@ -381,6 +382,7 @@ int decode_options(int& argc, char**& argv)
 		{"restore-files", 1, &long_option, opt_restore_files},
 		{"restore-directory", 1, &long_option, opt_restore_directory},
 		{"restore-all", 0, &long_option, opt_restore_all},
+		{"log", 1, &long_option, opt_log},
 		{NULL, 0, NULL, 0}
 	};
 
@@ -508,6 +510,92 @@ int decode_options(int& argc, char**& argv)
 			case opt_histogram:
 				commandline_histogram = optarg;
 				break;
+			case opt_log:
+				std::string logopts = optarg;
+				while(true) {
+					if( ! logopts.substr(0,5).compare("debug") ) {
+						if( logopts[5] == '=' ) {
+							size_t pos = logopts.find_first_of(',');
+							std::string fname(logopts.substr(6, pos-6));
+							if( fname.compare("0") ) {
+								Log::dfile.open(fname);
+								Log::debug.rdbuf(Log::dfile.rdbuf());
+							} else {
+								Log::debug.rdbuf(0);
+							}
+							logopts.erase(0, pos);
+							//FIXME: close the file when the program ends
+						} else {
+							Log::debug.rdbuf(std::cout.rdbuf());
+							logopts.erase(0,5);
+						}
+					} else if( ! logopts.substr(0,4).compare("info") ) {
+						if( logopts[4] == '=' ) {
+							size_t pos = logopts.find_first_of(',');
+							std::string fname(logopts.substr(5, pos-5));
+							if( fname.compare("0") ) {
+								Log::ifile.open(fname);
+								Log::info.rdbuf(Log::ifile.rdbuf());
+							} else {
+								Log::info.rdbuf(0);
+							}
+							logopts.erase(0, pos);
+							//FIXME: close the file when the program ends
+						} else {
+							Log::info.rdbuf(std::cout.rdbuf());
+							logopts.erase(0,4);
+						}
+					} else if( ! logopts.substr(0,4).compare("warn") ) {
+						if( logopts[4] == '=' ) {
+							size_t pos = logopts.find_first_of(',');
+							std::string fname(logopts.substr(5, pos-5));
+							if( fname.compare("0") ) {
+								Log::wfile.open(fname);
+								Log::warn.rdbuf(Log::wfile.rdbuf());
+							} else {
+								Log::warn.rdbuf(0);
+							}
+							logopts.erase(0, pos);
+							//FIXME: close the file when the program ends
+						} else {
+							Log::warn.rdbuf(std::cout.rdbuf());
+							logopts.erase(0,4);
+						}
+					} else if( ! logopts.substr(0,5).compare("error") ) {
+						if( logopts[5] == '=' ) {
+							size_t pos = logopts.find_first_of(',');
+							std::string fname(logopts.substr(6, pos-6));
+							if( fname.compare("0") ) {
+								Log::efile.open(fname);
+								Log::error.rdbuf(Log::efile.rdbuf());
+							} else {
+								Log::error.rdbuf(0);
+							}
+							logopts.erase(0, pos);
+							//FIXME: close the file when the program ends
+						} else {
+							Log::error.rdbuf(std::cout.rdbuf());
+							logopts.erase(0,5);
+						}
+
+					} else {
+						if( logopts.compare("0") ) {
+							Log::efile.open(logopts);
+							Log::info.rdbuf(Log::efile.rdbuf());
+							Log::warn.rdbuf(Log::efile.rdbuf());
+							Log::error.rdbuf(Log::efile.rdbuf());
+							//FIXME: close the file when the program ends
+						} else {
+							Log::info.rdbuf(0);
+							Log::warn.rdbuf(0);
+							Log::error.rdbuf(0);
+						}
+						logopts.clear();
+					}
+					if(logopts.empty()) break;
+					logopts.erase(0,1);
+				}
+				break;
 			}
 			break;
 		case 'j':
@@ -590,7 +678,7 @@ int decode_options(int& argc, char**& argv)
 	return 0;
 }
 
-int init_fs(const char* fsname, ext2_filsys *ret_fs) {
+static errcode_t init_fs(const char* fsname, ext2_filsys *ret_fs) {
 	struct stat statbuf;
 	int error = 0;
 	errcode_t errcode;
@@ -623,7 +711,7 @@ int init_fs(const char* fsname, ext2_filsys *ret_fs) {
 	}
 
 	// Open the filesystem.
-	errcode = ext2fs_open (fsname, 0, commandline_backup_superblock,
+	errcode = ext2fs_open (fsname, EXT2_FLAG_64BITS, commandline_backup_superblock,
 		commandline_block_size, io_mgr, ret_fs);
 	return errcode;
 }
