@@ -90,9 +90,9 @@ static void print_version(void)
 }
 
 
-static void print_usage(std::ostream& os, std::string progname)
+static void print_usage(std::ostream& os, std::string cmd)
 {
-  os << "Usage: " << progname << " [options] [--] device-file\n";
+  os << "Usage: " << cmd << " [options] [--] device-file\n";
   os << "Options:\n";
   os << "  --version, -[vV]       Print version and exit successfully.\n";
   os << "  --help,                Print this help and exit successfully.\n";
