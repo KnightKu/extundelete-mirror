@@ -95,9 +95,6 @@ Important future enhancements:
 #include "extundelete-priv.h"
 #include "block.h"
 
-#ifndef EXT2_FLAG_64BITS
-#define EXT2_FLAG_64BITS 0x20000
-#endif
 
 #ifndef HAVE_EXT2FS_BMAP2
 static errcode_t ext2fs_bmap2(ext2_filsys fs, ext2_ino_t ino,
@@ -202,7 +199,7 @@ struct nth_block {
 static int extundelete_test_inode_bitmap(const ext2_filsys fs, ext2_ino_t ino)
 {
 	int allocated = -1;
-	if(! fs->flags & EXT2_FLAG_64BITS) {
+	if(! EXT2_SB(fs->super)->s_feature_incompat & EXT4_FEATURE_INCOMPAT_64BIT) {
 		allocated = ext2fs_test_inode_bitmap(fs->inode_map, ino);
 	}
 #ifdef HAVE_EXT2FS_TEST_INODE_BITMAP2
@@ -350,17 +347,26 @@ static inline uint32_t le32_to_cpu(uint32_t *y)
 	return *y;
 }
 
+
+//FIXME: linux kernel's version of this macro checks the journal version >= 2.
 #define JOURNAL_HAS_INCOMPAT_FEATURE(j,mask)                               \
         ((j)->s_header.h_blocktype == 4 &&                                  \
          ((j)->s_feature_incompat & ext2fs_cpu_to_be32((mask))))
 
 static size_t journ_tag_bytes(journal_superblock_t *jsb)
 {
-	if (JOURNAL_HAS_INCOMPAT_FEATURE(jsb, 2))
-		return 12;
-	else
-		return 8;
+        journal_block_tag_t tag;
+        size_t x = 0;
+
+        if (JOURNAL_HAS_INCOMPAT_FEATURE(jsb, JFS_FEATURE_INCOMPAT_CSUM_V2))
+                x += sizeof(tag.t_checksum);
+
+        if (JOURNAL_HAS_INCOMPAT_FEATURE(jsb, JFS_FEATURE_INCOMPAT_64BIT))
+                return x + JBD_TAG_SIZE64;
+        else
+                return x + JBD_TAG_SIZE32;
 }
+
 
 // Changes a journal header, as read from disk, to the same
 // endianness as the computer this program is running on.
@@ -396,7 +402,8 @@ static void journal_block_tag_to_cpu(char *jbt, journal_superblock_t *jsb)
 {
 	int item = sizeof(uint32_t)/sizeof(char);
 	be32_to_cpu( (uint32_t *) jbt );
-	be32_to_cpu( (uint32_t *) &jbt[item*1] );
+	be16_to_cpu( (uint16_t *) &jbt[item*1] );
+	be16_to_cpu( (uint16_t *) &jbt[item*1 + 2] );
 	if(journ_tag_bytes(jsb) > 8)
 		be32_to_cpu( (uint32_t *) &jbt[item*2] );
 }
@@ -481,10 +488,6 @@ int load_super_block(ext2_filsys fs)
 	}
 	if ((super_block.s_feature_incompat & EXT3_FEATURE_INCOMPAT_JOURNAL_DEV))
 		Log::warn << "WARNING: extundelete may have problems reading from an external journal.\n";
-
-	// Initialize group_descriptor_table.
-	//if(EXT2_DESC_PER_BLOCK(&super_block) * sizeof(ext2_group_desc) != (size_t)block_size_)
-	//	return EU_FS_ERR;
 
 	return errcode;
 }
@@ -836,9 +839,7 @@ static int pair_names_with(ext2_filsys fs, ext2_filsys jfs, std::vector<ext2_ino
 	return 0;
 }
 
-/* FIXME: Add a function pointer parameter; should pass a function that displays
- * the status messages rather than sending them to stdout.
-*/
+
 int restore_directory(ext2_filsys fs, ext2_filsys jfs, ext2_ino_t dirino, std::string dirname)
 {
 	std::vector<ext2_ino_t> recoverable_inodes;
@@ -920,15 +921,15 @@ int restore_directory(ext2_filsys fs, ext2_filsys jfs, ext2_ino_t dirino, std::s
 
 	Log::info << recoverable_inodes.size() << " recoverable inodes found." << std::endl;
 /*
-	std::cout << "Deleted inodes:  ";
+	Log::debug << "Deleted inodes:  ";
 	for(std::list<ext2_ino_t>::iterator it2 = deleted_inodes.begin(); it2 != deleted_inodes.end(); it2++) {
 
-		std::cout << (int) *it2 << "   " << std::flush;
+		Log::debug << (int) *it2 << "   " << std::flush;
 	}
-	std::cout << "Recoverable inodes:  ";
+	Log::debug << "Recoverable inodes:  ";
 	for(std::vector<ext2_ino_t>::iterator it2 = recoverable_inodes.begin(); it2 != recoverable_inodes.end(); it2++) {
 
-		std::cout << (int) *it2 << "   " << std::flush;
+		Log::debug << (int) *it2 << "   " << std::flush;
 	}
 //*/
 	Log::info << "Looking through the directory structure for deleted files ... "
@@ -1088,12 +1089,16 @@ int init_journal(ext2_filsys fs, ext2_filsys jfs, journal_superblock_t *jsb)
 				<< "Revoke block " << blocks[n] << ":"
 				<< " (size " << rvk->r_count << ") ";
 				int64_t init_count = sizeof(journal_revoke_header_t);
-				int64_t skip = fs->flags & EXT2_FLAG_64BITS ? sizeof(blk64_t) : sizeof(blk_t);
+				int64_t skip;
+				if(JOURNAL_HAS_INCOMPAT_FEATURE(jsb, JFS_FEATURE_INCOMPAT_64BIT))
+					skip = sizeof(blk64_t);
+				else
+					skip = sizeof(blk_t);
 				for (int64_t count = init_count; count < rvk->r_count;
 						count += skip)
 				{
 					blk64_t blk;
-					if(fs->flags & EXT2_FLAG_64BITS) {
+					if(JOURNAL_HAS_INCOMPAT_FEATURE(jsb, JFS_FEATURE_INCOMPAT_64BIT)) {
 						blk64_t *block = (blk64_t *)&buf[count];
 						be64_to_cpu((uint64_t *)block);
 						rvk_block.push_back(*block);
@@ -1124,8 +1129,8 @@ int init_journal(ext2_filsys fs, ext2_filsys jfs, journal_superblock_t *jsb)
 			}
 			default:
 			{
-				std::cout << std::flush;
-				std::cerr << "WARNING: Unexpected blocktype ("
+				Log::info << std::flush;
+				Log::warn << "WARNING: Unexpected blocktype ("
 				<< descriptor->h_blocktype << ") in the journal."
 				<< " The journal may be corrupt." << std::endl;
 				break;
@@ -1434,9 +1439,9 @@ errcode_t restore_file(ext2_filsys fs, ext2_filsys jfs, const std::string& fname
 		ino2 = 0;
 	}
 
-	//std::cout << "Post directory block search inode number: " << ino << std::endl;
-	//std::cout << "Next file part: " << curr_part << std::endl;
-	//std::cout << "File name and place: " << fname << "   " << place << std::endl;
+	//Log::debug << "Post directory block search inode number: " << ino << std::endl;
+	//Log::debug << "Next file part: " << curr_part << std::endl;
+	//Log::debug << "File name and place: " << fname << "   " << place << std::endl;
 
 	char *buf2 = new char[ block_size_];
 	while(curr_part != "") {
@@ -1511,8 +1516,8 @@ errcode_t restore_file(ext2_filsys fs, ext2_filsys jfs, const std::string& fname
 
 	}
 
-	// std::cout << "Post-revoke search current inode number: " << ino << std::endl;
-	// std::cout << "Next file part: " << curr_part << std::endl;
+	// Log::debug << "Post-revoke search current inode number: " << ino << std::endl;
+	// Log::debug << "Next file part: " << curr_part << std::endl;
 
 	//delete priv;
 	delete new_ino;
@@ -1580,10 +1585,10 @@ static errcode_t recover_inode(ext2_filsys fs, ext2_filsys jfs, ext2_ino_t ino,
 
 /*
 	std::list<block_pair_t>::iterator oit;
-	std::cout << "oldblks contains:";
+	Log::debug << "oldblks contains:";
 	for ( oit=oldblks2.begin() ; oit != oldblks2.end(); oit++ )
-		std::cout << " " << (*oit).first;
-	std::cout << std::endl;
+		Log::debug << " " << (*oit).first;
+	Log::debug << std::endl;
 //*/
 	bool found = false;
 	// If the inode is not allocated, we can just pick the first valid inode
@@ -1627,7 +1632,7 @@ static int write_block64(ext2_filsys fs, blk64_t *blocknr, e2_blkcnt_t blockcnt,
 	if(allocated == 0) {
 		std::streampos pos = blockcnt * block_size_;
 		(*file).seekp( pos );
-		io_channel_read_blk(fs->io, *blocknr, 1, reinterpret_cast<char *>(charbuf) );
+		read_block64(fs, blocknr, 0, 0, 0, charbuf);
 		(*file).write (charbuf, block_size_);
 		return 0;
 	}
@@ -1834,8 +1839,8 @@ int read_journal_superblock (ext2_filsys fs, ext2_filsys jfs,
 	}
 	else {
 		// Read the journal superblock from an external journal.
-		if ((errcode = io_channel_read_blk(jfs->io, jfs->super->s_first_data_block+1,
-				-1024, buf) )) {
+		blk64_t jblk = jfs->super->s_first_data_block + 1;
+		if (( errcode = read_block64(jfs, &jblk, 0, 0, 0, buf) )) {
 			com_err("extundelete", errcode, "while reading journal superblock");
 			return EU_EXAMINE_FAIL;
 		}
@@ -1881,16 +1886,16 @@ int extundelete_make_outputdir(const char * const dirname, const char * const pr
 		if (errno != ENOENT)
 		{
 			int error = errno;
-			std::cout << std::flush;
-			std::cerr << progname << ": stat: " << dirname << ": "
+			Log::warn << std::flush;
+			Log::error << progname << ": stat: " << dirname << ": "
 			<< strerror(error) << std::endl;
 			return EU_EXAMINE_FAIL;
 		}
 		else if (mkdir(dirname, 0755) == -1 && errno != EEXIST)
 		{
 			int error = errno;
-			std::cout << std::flush;
-			std::cerr << progname << ": failed to create output directory "
+			Log::warn << std::flush;
+			Log::error << progname << ": failed to create output directory "
 			<< dirname << ": " << strerror(error) << std::endl;
 			return EU_EXAMINE_FAIL;
 		}
@@ -1898,8 +1903,8 @@ int extundelete_make_outputdir(const char * const dirname, const char * const pr
 	}
 	else if (!S_ISDIR(statbuf.st_mode))
 	{
-		std::cout << std::flush;
-		std::cerr << progname << ": " << dirname
+		Log::warn << std::flush;
+		Log::error << progname << ": " << dirname
 		<< " exists but is not a directory!" << std::endl;
 		return EU_EXAMINE_FAIL;
 	}
