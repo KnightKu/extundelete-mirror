@@ -195,6 +195,9 @@ struct nth_block {
 };
 
 
+#ifndef EXT4_FEATURE_INCOMPAT_64BIT
+#define EXT4_FEATURE_INCOMPAT_64BIT 0x0080
+#endif
 /* This function unifies the 32 and 64 bit inode bitmap tests */
 static int extundelete_test_inode_bitmap(const ext2_filsys fs, ext2_ino_t ino)
 {
@@ -247,7 +250,7 @@ static int extundelete_test_block_bitmap(ext2fs_block_bitmap block_map, blk64_t 
 		EXT2_INODE_SIZE(fs->super);
 	blk_t max_block = max_offset >> EXT2_BLOCK_SIZE_BITS(fs->super);
 	for(uint32_t group = 0; group < fs->group_desc_count; group++ ) {
-		blk_t block_nr = ext2fs_inode_table_loc(fs, group);
+		blk64_t block_nr = ext2fs_inode_table_loc(fs, group);
 		block_to_group_map.insert(std::pair<blk_t, uint32_t>(block_nr, group));
 	}
 
@@ -262,9 +265,9 @@ static int extundelete_test_block_bitmap(ext2fs_block_bitmap block_map, blk64_t 
 		return 0;
 	}
 
-	uint32_t inode_table = ext2fs_inode_table_loc(fs, group);
+	blk64_t inode_table = ext2fs_inode_table_loc(fs, group);
 	assert(block >= inode_table && (size_t)block_size_ * (block + 1) <= (size_t)block_size_ * inode_table + EXT2_INODES_PER_GROUP(fs->super) * inode_size_);
-	return 1 + group * EXT2_INODES_PER_GROUP(fs->super) + (size_t)block_size_ * (block - inode_table) / inode_size_;
+	return (ext2_ino_t)( 1 + group * EXT2_INODES_PER_GROUP(fs->super) + (size_t)block_size_ * (block - inode_table) / inode_size_);
 }
 
 // Returns the number of blocks a non-sparse file would need for the data
@@ -355,16 +358,16 @@ static inline uint32_t le32_to_cpu(uint32_t *y)
 
 static size_t journ_tag_bytes(journal_superblock_t *jsb)
 {
-        journal_block_tag_t tag;
-        size_t x = 0;
+	journal_block_tag_t tag;
+	size_t x = 0;
 
-        if (JOURNAL_HAS_INCOMPAT_FEATURE(jsb, JFS_FEATURE_INCOMPAT_CSUM_V2))
-                x += sizeof(tag.t_checksum);
+	if (JOURNAL_HAS_INCOMPAT_FEATURE(jsb, JFS_FEATURE_INCOMPAT_CSUM_V2))
+		x += sizeof(tag.t_checksum);
 
-        if (JOURNAL_HAS_INCOMPAT_FEATURE(jsb, JFS_FEATURE_INCOMPAT_64BIT))
-                return x + JBD_TAG_SIZE64;
-        else
-                return x + JBD_TAG_SIZE32;
+	if (JOURNAL_HAS_INCOMPAT_FEATURE(jsb, JFS_FEATURE_INCOMPAT_64BIT))
+		return x + JBD_TAG_SIZE64;
+	else
+		return x + JBD_TAG_SIZE32;
 }
 
 
@@ -380,8 +383,8 @@ static void journal_header_to_cpu(char *jhead)
 
 // Changes a journal revoke header, as read from disk, to the same
 // endianness as the computer this program is running on.
-// FIXME: This function may fail if (for example) the partition was used on a
-// 32-bit system, but we are running the program on a 64-bit cpu.
+// Note: This function may fail if (for example) the partition was created on
+// a system which has sizeof(int) != 4.  
 static void journal_revoke_header_to_cpu(char *jrh)
 {
 	journal_header_to_cpu(jrh);
@@ -392,8 +395,11 @@ static void journal_revoke_header_to_cpu(char *jrh)
 		be32_to_cpu( (uint32_t *) rvkd );
 	else if (sizeof(int) == 8)
 		be64_to_cpu( (uint64_t *) rvkd );
-	else
+	else {
+		Log::error << "The system's integer size is nonstandard and the"
+		<<" program cannot continue." << std::endl;
 		assert(sizeof(int) == 4);
+	}
 }
 
 // Changes a journal block tag, as read from disk, to the same
@@ -643,7 +649,7 @@ static int get_nth_block_num64(ext2_filsys /*fs*/, blk64_t *blocknr, e2_blkcnt_t
 		blk64_t /*ref*/, int /*off*/, void *buf)
 {
 	struct nth_block *nth_blk = reinterpret_cast<nth_block *>(buf);
-	if( blockcnt == nth_blk->n) {
+	if( (blk64_t) blockcnt == nth_blk->n) {
 		*(nth_blk->blknum) = *blocknr;
 		return BLOCK_ABORT;
 	}
@@ -882,8 +888,8 @@ int restore_directory(ext2_filsys fs, ext2_filsys jfs, ext2_ino_t dirino, std::s
 		if ( blknum - (*bgit).first < max_block) {
 			int group = (*bgit).second;
 			blk64_t blknum1 = ext2fs_inode_table_loc(fs, group);
-			ext2_ino_t firstino = (blknum - blknum1) * block_size_ / inode_size_
-				+ group * EXT2_INODES_PER_GROUP(fs->super) + 1;
+			ext2_ino_t firstino = (ext2_ino_t) ((blknum - blknum1) * block_size_ / inode_size_
+				+ group * EXT2_INODES_PER_GROUP(fs->super) + 1);
 			read_journal_block(jfs, *jit, buf);
 			for(ext2_ino_t ino = firstino; ino < firstino + block_size_/inode_size_ ;
 					ino++ ) {
@@ -976,8 +982,6 @@ errcode_t read_journal_block(ext2_filsys fs, blk64_t n, char *buf)
 
 /*
  * Read contents of journal file into global variables
- * FIXME: When libext2fs gets 64-bit support, change this to read 64-bit
- * block numbers.
 */
 int init_journal(ext2_filsys fs, ext2_filsys jfs, journal_superblock_t *jsb)
 {
@@ -1540,7 +1544,12 @@ errcode_t restore_file(ext2_filsys fs, ext2_filsys jfs, const std::string& fname
 		Log::error << "Failed to restore file " << fname << std::endl
 		<< "Could not find correct inode number past inode " << ino
 		<< "." << std::endl;
-		// FIXME: list possible further names if ino is a directory
+		inode = (struct ext2_inode *) operator new(EXT2_INODE_SIZE(fs->super));
+		ext2fs_read_inode_full (fs, ino, inode, EXT2_INODE_SIZE(fs->super));
+		if (LINUX_S_ISDIR(inode->i_mode) && inode->i_blocks > 0)
+			Log::error << "Try altering the filename to one of the entries listed below." << std::endl;
+			print_directory_inode(fs, inode, ino);
+		delete inode;
 		return EU_RESTORE_FAIL;
 	}
 }
@@ -1642,8 +1651,7 @@ static int write_block64(ext2_filsys fs, blk64_t *blocknr, e2_blkcnt_t blockcnt,
 		else
 			Log::error << "Block " << *blocknr << " is out of range." << std::endl;
 
-		//FIXME: should probably return (BLOCK_ABORT | BLOCK_ERROR)
-		return -1;
+		return (BLOCK_ABORT | BLOCK_ERROR);
 	}
 }
 
@@ -1783,8 +1791,7 @@ static void parse_inode_block(ext2_filsys fs, struct ext2_inode *inode, const ch
 #ifdef WORDS_BIGENDIAN
 	int n = 1 ;
 	int hostorder = (*(char *) &n != 1);
-	ext2fs_swap_inode(fs, inode, (struct ext2_inode *) inodebuf, hostorder);
-	//FIXME: USE ext2fs_swap_inode_large if necessary, or maybe ext2fs_read_inode_full
+	ext2fs_swap_inode_full(fs, (struct ext2_inode_large *) inode, (struct ext2_inode_large *) inodebuf, 0, EXT2_INODE_SIZE(fs->super));
 #else
 	memcpy(inode, inodebuf, EXT2_INODE_SIZE(fs->super) );
 #endif
