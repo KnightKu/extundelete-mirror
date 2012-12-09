@@ -6,11 +6,38 @@
 /* Define to 1 if the system has the type `blk64_t'. */
 #undef HAVE_BLK64_T
 
+/* Define to 1 if you have the `ext2fs_blocks_count' function. */
+#undef HAVE_EXT2FS_BLOCKS_COUNT
+
+/* Define to 1 if you have the `ext2fs_bmap2' function. */
+#undef HAVE_EXT2FS_BMAP2
+
+/* Define to 1 if you have the `ext2fs_extent_open2' function. */
+#undef HAVE_EXT2FS_EXTENT_OPEN2
+
+/* Define to 1 if you have the `ext2fs_get_array' function. */
+#undef HAVE_EXT2FS_GET_ARRAY
+
 /* Define to 1 if you have the `ext2fs_get_generic_bitmap_start' function. */
 #undef HAVE_EXT2FS_GET_GENERIC_BITMAP_START
 
+/* Define to 1 if you have the `ext2fs_get_generic_bmap_start' function. */
+#undef HAVE_EXT2FS_GET_GENERIC_BMAP_START
+
+/* Define to 1 if you have the `ext2fs_group_of_blk2' function. */
+#undef HAVE_EXT2FS_GROUP_OF_BLK2
+
 /* Define to 1 if you have the `ext2fs_inode_table_loc' function. */
 #undef HAVE_EXT2FS_INODE_TABLE_LOC
+
+/* Define to 1 if you have the `ext2fs_read_dir_block3' function. */
+#undef HAVE_EXT2FS_READ_DIR_BLOCK3
+
+/* Define to 1 if you have the `ext2fs_test_block_bitmap2' function. */
+#undef HAVE_EXT2FS_TEST_BLOCK_BITMAP2
+
+/* Define to 1 if you have the `ext2fs_test_inode_bitmap2' function. */
+#undef HAVE_EXT2FS_TEST_INODE_BITMAP2
 
 /* Define to 1 if you have the <fcntl.h> header file. */
 #undef HAVE_FCNTL_H
