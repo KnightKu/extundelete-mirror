@@ -45,6 +45,10 @@ struct option {
 #include <ext2fs/ext2fs.h>
 #include "extundelete.h"
 
+#ifndef EXT2_FLAG_64BITS
+#define EXT2_FLAG_64BITS 0x20000
+#endif
+
 static std::string progname;
 static std::string commandline_histogram;
 static std::string commandline_journal_filename;
