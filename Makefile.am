@@ -5,15 +5,15 @@ EXTRA_DIST = LICENSE README autogen.sh
 profile:
 	$(MAKE) RECURSIVE_TARGETS=profile-recursive $(AM_MAKEFLAGS) $(@:profile=profile-recursive)
 
-jdebug:
-	$(MAKE) RECURSIVE_TARGETS=jdebug-recursive $(AM_MAKEFLAGS) $(@:jdebug=jdebug-recursive)
-
 nodebug:
 	$(MAKE) RECURSIVE_TARGETS=nodebug-recursive $(AM_MAKEFLAGS) $(@:nodebug=nodebug-recursive)
 
+strict:
+	$(MAKE) RECURSIVE_TARGETS=strict-recursive $(AM_MAKEFLAGS) $(@:strict=strict-recursive)
+
 profile-am: Makefile config.h
-jdebug-am: Makefile config.h
 nodebug-am: Makefile config.h
+strict-am: Makefile config.h
 
 release: clean
 	-rm -f aclocal.m4
@@ -29,4 +29,4 @@ maintainer-clean-local:
 	-rm -f aclocal.m4 config.h.in Makefile.in configure
 	-rm -f compile depcomp install-sh missing
 
-.PHONY:	profile profile-am jdebug jdebug-am nodebug nodebug-am package clean-local maintainer-clean-local
+.PHONY:	profile profile-am nodebug nodebug-am strict strict-am release clean-local maintainer-clean-local
