@@ -158,13 +158,9 @@ block_list_t rvk_block;
 journal_map_t journ_map;
 std::ostream Log::error(std::cerr.rdbuf());
 std::ostream Log::warn(std::cout.rdbuf());
+std::ostream Log::status(std::cout.rdbuf());
 std::ostream Log::info(0);
 std::ostream Log::debug(0);
-std::ofstream Log::efile;
-std::ofstream Log::wfile;
-std::ofstream Log::ifile;
-std::ofstream Log::dfile;
-
 
 // Define triad: a class similar to std::pair, but with three values.
 template <class T1, class T2, class T3> struct triad
@@ -855,9 +851,9 @@ int restore_directory(ext2_filsys fs, ext2_filsys jfs, ext2_ino_t dirino, std::s
 	block_list_t::reverse_iterator jit;
 	std::vector<uint32_t>::reverse_iterator sit;
 
-	Log::info << "Searching for recoverable inodes in directory ";
-	if(dirino == EXT2_ROOT_INO) Log::info << "/";
-	Log::info << dirname << " ... " << std::endl;
+	Log::status << "Searching for recoverable inodes in directory ";
+	if(dirino == EXT2_ROOT_INO) Log::status << "/";
+	Log::status << dirname << " ... " << std::endl;
 
 	//First, make a map of all the block group inode table locations
 	std::map<blk64_t, int> block_to_group_map;
@@ -925,7 +921,7 @@ int restore_directory(ext2_filsys fs, ext2_filsys jfs, ext2_ino_t dirino, std::s
 		std::unique(recoverable_inodes.begin(), recoverable_inodes.end());
 	recoverable_inodes.resize( rit - recoverable_inodes.begin() );
 
-	Log::info << recoverable_inodes.size() << " recoverable inodes found." << std::endl;
+	Log::status << recoverable_inodes.size() << " recoverable inodes found." << std::endl;
 /*
 	Log::debug << "Deleted inodes:  ";
 	for(std::list<ext2_ino_t>::iterator it2 = deleted_inodes.begin(); it2 != deleted_inodes.end(); it2++) {
@@ -938,13 +934,13 @@ int restore_directory(ext2_filsys fs, ext2_filsys jfs, ext2_ino_t dirino, std::s
 		Log::debug << (int) *it2 << "   " << std::flush;
 	}
 //*/
-	Log::info << "Looking through the directory structure for deleted files ... "
+	Log::status << "Looking through the directory structure for deleted files ... "
 	<< std::endl;
 	std::vector<ext2_ino_t>::size_type rsize = recoverable_inodes.size();
 	int pnflag = !extundelete_test_inode_bitmap(fs, dirino);
 	std::vector<ext2_ino_t> parent_inos(1, EXT2_ROOT_INO);
 	pair_names_with(fs, jfs, recoverable_inodes, dirino, dirname, pnflag, parent_inos);
-	Log::info << recoverable_inodes.size() << " recoverable inodes still lost." << std::endl;
+	Log::status << recoverable_inodes.size() << " recoverable inodes still lost." << std::endl;
 
 	if(dirino == EXT2_ROOT_INO) {
 		std::vector<ext2_ino_t>::iterator diit;
@@ -955,10 +951,10 @@ int restore_directory(ext2_filsys fs, ext2_filsys jfs, ext2_ino_t dirino, std::s
 			restore_inode(fs, jfs, *diit, fname.str());
 		}
 		if(rsize == 0)
-			Log::info << "No files were undeleted." << std::endl;
+			Log::status << "No files were undeleted." << std::endl;
 	}
 	else if(rsize == recoverable_inodes.size() ) {
-		Log::info << "No files were undeleted." << std::endl;
+		Log::status << "No files were undeleted." << std::endl;
 	}
 	return 0;
 }
@@ -997,7 +993,7 @@ int init_journal(ext2_filsys fs, ext2_filsys jfs, journal_superblock_t *jsb)
 	ext2fs_read_inode_full (fs, journal_ino, journal_inode, EXT2_INODE_SIZE(fs->super));
 
 	// Load the journal descriptors into memory.
-	Log::info << "Loading journal descriptors ... " << std::flush;
+	Log::status << "Loading journal descriptors ... " << std::flush;
 
 	// Apparently, some bug exists that allocates one too many journal blocks,
 	// so add one to the number of data blocks expected to prevent a memory
@@ -1159,24 +1155,26 @@ int init_journal(ext2_filsys fs, ext2_filsys jfs, journal_superblock_t *jsb)
 		journ_map.insert( point );
 	}
 
-	Log::info << number_of_descriptors << " descriptors loaded." << std::endl;
+	Log::status << number_of_descriptors << " descriptors loaded." << std::endl;
 
 	if( Log::debug.rdbuf() ) {
 		block_list_t::iterator it;
-		Log::debug << std::endl << "rvk_block contains:";
+		Log::debug << std::endl << "Information from the journal:";
+		Log::debug << std::endl << "Revoked block numbers:";
 		// All the block numbers of deleted directory blocks
 		for ( it=rvk_block.begin() ; it != rvk_block.end(); it++ )
 			Log::debug << " " << *it;
 		Log::debug << std::endl;
-		//Log::debug << "tag_seq contains:";
-		//for ( it=tag_seq.begin() ; it != tag_seq.end(); it++ )
-		//	Log::debug << " " << *it;
-		//Log::debug << std::endl;
-		Log::debug << "tag_jblk contains:";
+		Log::debug << "Sequence numbers:";
+		std::vector<uint32_t>::iterator sit;
+		for ( sit=tag_seq.begin() ; sit != tag_seq.end(); sit++ )
+			Log::debug << " " << *sit;
+		Log::debug << std::endl;
+		Log::debug << "Journal block numbers:";
 		for ( it=tag_jblk.begin() ; it != tag_jblk.end(); it++ )
 			Log::debug << " " << *it;
 		Log::debug << std::endl;
-		Log::debug << "tag_fsblk contains:";
+		Log::debug << "Filesystem block numbers:";
 		for ( it=tag_fsblk.begin() ; it != tag_fsblk.end(); it++ )
 			Log::debug << " " << *it;
 
@@ -1537,8 +1535,12 @@ errcode_t restore_file(ext2_filsys fs, ext2_filsys jfs, const std::string& fname
 		return retval;
 	}
 	if(curr_part == "") {
-		restore_inode(fs, jfs, ino, fname);
-		return 0;
+		retval = restore_inode(fs, jfs, ino, fname);
+		if(retval == 0)
+			Log::status << "Successfully restored file " << fname << std::endl;
+		else
+			Log::status << "Unable to restore file " << fname << std::endl;
+		return retval;
 	}
 	else {
 		Log::error << "Failed to restore file " << fname << std::endl
@@ -1885,8 +1887,10 @@ int print_inode(ext2_filsys fs, ext2_ino_t ino) {
 		return 0;
 }
 
+
 int extundelete_make_outputdir(const char * const dirname, const char * const progname) {
 	struct stat statbuf;
+	int retval;
 	errno = 0;
 	if (stat(dirname, &statbuf) == -1)
 	{
@@ -1898,13 +1902,20 @@ int extundelete_make_outputdir(const char * const dirname, const char * const pr
 			<< strerror(error) << std::endl;
 			return EU_EXAMINE_FAIL;
 		}
-		else if (mkdir(dirname, 0755) == -1 && errno != EEXIST)
-		{
-			int error = errno;
-			Log::warn << std::flush;
-			Log::error << progname << ": failed to create output directory "
-			<< dirname << ": " << strerror(error) << std::endl;
-			return EU_EXAMINE_FAIL;
+		else {
+			std::string dname = dirname;
+			size_t nextslash = dname.find('/');
+			do {
+				retval = mkdir(dname.substr(0, nextslash).c_str(), 0755);
+				if(retval && errno != EEXIST) {
+					int error = errno;
+					Log::warn << std::flush;
+					Log::error << progname << ": failed to create output directory "
+					<< dirname << ": " << strerror(error) << std::endl;
+					return EU_EXAMINE_FAIL;
+				}
+				nextslash = dname.find('/', nextslash+1);
+			} while(nextslash != std::string::npos);
 		}
 		Log::info << "Writing output to directory " << dirname << std::endl;
 	}

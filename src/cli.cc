@@ -75,6 +75,11 @@ namespace Config {
 	static blk_t journal_block = 0;
 
 	static __u32 journal_transaction = 0;
+	std::ofstream elogfile;
+	std::ofstream wlogfile;
+	std::ofstream slogfile;
+	std::ofstream ilogfile;
+	std::ofstream dlogfile;
 }
 
 std::string commandline_restore_directory;
@@ -164,13 +169,13 @@ static errcode_t examine_fs(ext2_filsys fs)
 
 	if (Config::action)
 	{
-		Log::info << "Loading filesystem metadata ... " << std::flush;
+		Log::status << "Loading filesystem metadata ... " << std::flush;
 		/* Note: for a 1 TB partition with 4k block size, these bitmaps
 		 * require 40 MB memory. */
 		errcode = ext2fs_read_inode_bitmap(fs);
 		errcode |= ext2fs_read_block_bitmap(fs);
 		if (errcode) return errcode;
-		Log::info << fs->super->s_inodes_count / fs->super->s_inodes_per_group
+		Log::status << fs->super->s_inodes_count / fs->super->s_inodes_per_group
 		<< " groups loaded." << std::endl;
 	}
 
@@ -597,29 +602,42 @@ static int decode_options(int& argc, char**& argv)
 							size_t pos = logopts.find_first_of(',');
 							std::string fname(logopts.substr(6, pos-6));
 							if( fname.compare("0") ) {
-								Log::dfile.open(fname);
-								Log::debug.rdbuf(Log::dfile.rdbuf());
+								Config::dlogfile.open(fname);
+								Log::debug.rdbuf(Config::dlogfile.rdbuf());
 							} else {
 								Log::debug.rdbuf(0);
 							}
 							logopts.erase(0, pos);
-							//FIXME: close the file when the program ends
 						} else {
 							Log::debug.rdbuf(std::cout.rdbuf());
 							logopts.erase(0,5);
+						}
+					} else if( ! logopts.substr(0,6).compare("status") ) {
+						if( logopts[6] == '=' ) {
+							size_t pos = logopts.find_first_of(',');
+							std::string fname(logopts.substr(7, pos-7));
+							if( fname.compare("0") ) {
+								Config::slogfile.open(fname);
+								Log::status.rdbuf(Config::slogfile.rdbuf());
+							} else {
+								Log::status.rdbuf(0);
+							}
+							logopts.erase(0, pos);
+						} else {
+							Log::status.rdbuf(std::cout.rdbuf());
+							logopts.erase(0,6);
 						}
 					} else if( ! logopts.substr(0,4).compare("info") ) {
 						if( logopts[4] == '=' ) {
 							size_t pos = logopts.find_first_of(',');
 							std::string fname(logopts.substr(5, pos-5));
 							if( fname.compare("0") ) {
-								Log::ifile.open(fname);
-								Log::info.rdbuf(Log::ifile.rdbuf());
+								Config::ilogfile.open(fname);
+								Log::info.rdbuf(Config::ilogfile.rdbuf());
 							} else {
 								Log::info.rdbuf(0);
 							}
 							logopts.erase(0, pos);
-							//FIXME: close the file when the program ends
 						} else {
 							Log::info.rdbuf(std::cout.rdbuf());
 							logopts.erase(0,4);
@@ -629,13 +647,12 @@ static int decode_options(int& argc, char**& argv)
 							size_t pos = logopts.find_first_of(',');
 							std::string fname(logopts.substr(5, pos-5));
 							if( fname.compare("0") ) {
-								Log::wfile.open(fname);
-								Log::warn.rdbuf(Log::wfile.rdbuf());
+								Config::wlogfile.open(fname);
+								Log::warn.rdbuf(Config::wlogfile.rdbuf());
 							} else {
 								Log::warn.rdbuf(0);
 							}
 							logopts.erase(0, pos);
-							//FIXME: close the file when the program ends
 						} else {
 							Log::warn.rdbuf(std::cout.rdbuf());
 							logopts.erase(0,4);
@@ -645,13 +662,12 @@ static int decode_options(int& argc, char**& argv)
 							size_t pos = logopts.find_first_of(',');
 							std::string fname(logopts.substr(6, pos-6));
 							if( fname.compare("0") ) {
-								Log::efile.open(fname);
-								Log::error.rdbuf(Log::efile.rdbuf());
+								Config::elogfile.open(fname);
+								Log::error.rdbuf(Config::elogfile.rdbuf());
 							} else {
 								Log::error.rdbuf(0);
 							}
 							logopts.erase(0, pos);
-							//FIXME: close the file when the program ends
 						} else {
 							Log::error.rdbuf(std::cout.rdbuf());
 							logopts.erase(0,5);
@@ -659,13 +675,14 @@ static int decode_options(int& argc, char**& argv)
 
 					} else {
 						if( logopts.compare("0") ) {
-							Log::efile.open(logopts);
-							Log::info.rdbuf(Log::efile.rdbuf());
-							Log::warn.rdbuf(Log::efile.rdbuf());
-							Log::error.rdbuf(Log::efile.rdbuf());
-							//FIXME: close the file when the program ends
+							Config::elogfile.open(logopts);
+							Log::info.rdbuf(Config::elogfile.rdbuf());
+							Log::status.rdbuf(Config::elogfile.rdbuf());
+							Log::warn.rdbuf(Config::elogfile.rdbuf());
+							Log::error.rdbuf(Config::elogfile.rdbuf());
 						} else {
 							Log::info.rdbuf(0);
+							Log::status.rdbuf(0);
 							Log::warn.rdbuf(0);
 							Log::error.rdbuf(0);
 						}
@@ -821,7 +838,7 @@ int main(int argc, char* argv[])
 	errcode = init_fs(*argv, &fs);
 	if (errcode) {
 		std::cout << std::flush;
-		com_err(Config::progname, errcode, "when trying to open filesystem %s", *argv);
+		com_err(Config::progname.c_str(), errcode, "when trying to open filesystem %s", *argv);
 		return EXIT_FAILURE;
 	}
 
@@ -849,19 +866,35 @@ int main(int argc, char* argv[])
 		} while (ans != 'y');
 	}
 	else if (errcode) {
-		com_err(Config::progname, errcode, "when trying to load filesystem parameters");
+		com_err(Config::progname.c_str(), errcode, "when trying to load filesystem parameters");
 		return errcode;
 	}
 
 	errcode = examine_fs (fs);
 	if (errcode) {
-		com_err(Config::progname, errcode, "when trying to examine filesystem");
+		com_err(Config::progname.c_str(), errcode, "when trying to examine filesystem");
 		return errcode;
 	}
 
 	errcode = ext2fs_close (fs);
 	if (errcode) {
-		com_err(Config::progname, errcode, "when trying to close filesystem");
+		com_err(Config::progname.c_str(), errcode, "when trying to close filesystem");
+	}
+
+	if(Config::elogfile.is_open()) {
+		Config::elogfile.close();
+	}
+	if(Config::wlogfile.is_open()) {
+		Config::wlogfile.close();
+	}
+	if(Config::slogfile.is_open()) {
+		Config::slogfile.close();
+	}
+	if(Config::ilogfile.is_open()) {
+		Config::ilogfile.close();
+	}
+	if(Config::dlogfile.is_open()) {
+		Config::dlogfile.close();
 	}
 	// Sync here to ensure all recovered data is physically written to disk.
 	sync();

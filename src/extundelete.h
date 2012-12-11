@@ -106,12 +106,9 @@ extern long commandline_after;
 namespace Log {
 extern std::ostream error;
 extern std::ostream warn;
+extern std::ostream status;
 extern std::ostream info;
 extern std::ostream debug;
-extern std::ofstream efile;
-extern std::ofstream wfile;
-extern std::ofstream ifile;
-extern std::ofstream dfile;
 }
 
 #endif //EXTUNDELETE_H
