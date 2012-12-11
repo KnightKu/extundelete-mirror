@@ -49,33 +49,44 @@ struct option {
 #define EXT2_FLAG_64BITS 0x20000
 #endif
 
-static std::string progname;
-static std::string commandline_histogram;
-static std::string commandline_journal_filename;
+
+namespace Config {
+	static std::string histogram = "";
+	static std::string progname;
+	static std::string journal_filename;
+	static std::string restore_file;
+	static std::string restore_files;
+	static std::string restore_inode;
+	static std::string fsname = "";
+	static std::string outputdir = "RECOVERED_FILES/";
+
+	static bool action = false;
+	static bool journal = false;
+	static bool restore_all = false;
+	static bool superblock = false;
+
+	static ext2_ino_t inode = 0;
+	static ext2_ino_t inode_to_block = 0;
+	static ext2_ino_t show_journal_inodes = 0;
+
+	static blk_t backup_superblock = 0;
+	static blk64_t block = 0;
+	static blk_t block_size = 0;
+	static blk_t journal_block = 0;
+
+	static __u32 journal_transaction = 0;
+}
+
 std::string commandline_restore_directory;
-static std::string commandline_restore_file;
-static std::string commandline_restore_files;
-static std::string commandline_restore_inode;
-static std::string commandline_fsname;
-
-static bool commandline_action = false;
-static bool commandline_journal = false;
-static bool commandline_restore_all = false;
-static bool commandline_superblock = false;
-
-static ext2_ino_t commandline_inode = 0;
-static ext2_ino_t commandline_inode_to_block = 0;
-static ext2_ino_t commandline_show_journal_inodes = 0;
-
-static blk_t commandline_backup_superblock = 0;
-static blk64_t commandline_block = 0;
-static blk_t commandline_block_size = 0;
-static blk_t commandline_journal_block = 0;
-
-static __u32 commandline_journal_transaction = 0;
-
 long commandline_before = LONG_MAX;
 long commandline_after = 0;
+
+
+static void Log_errors(const char * whoami, long code, const char * format, va_list args) {
+	char buffer[BUFSIZ];
+	vsprintf (buffer, format, args);
+	Log::error << whoami << ": " << error_message (code) << " " << buffer << std::endl;
+}
 
 
 static void print_version(void)
@@ -136,6 +147,9 @@ static void print_usage(std::ostream& os, std::string cmd)
   os << "                         level will be turned off.  If the parameter is\n";
   os << "                         '=filename', messages with that level will be written\n";
   os << "                         to filename.\n";
+  os << "   -o directory          Save the recovered files to the named directory.\n";
+  os << "                         The restored files are created in a directory\n";
+  os << "                         named 'RECOVERED_FILES/' by default.\n";
 }
 
 
@@ -143,12 +157,12 @@ static errcode_t examine_fs(ext2_filsys fs)
 {
 	errcode_t errcode;
 
-	if (commandline_superblock && !commandline_journal) {
+	if (Config::superblock && !Config::journal) {
 		// Print contents of superblock.
 		std::cout << fs->super << std::endl;
 	}
 
-	if (commandline_action)
+	if (Config::action)
 	{
 		Log::info << "Loading filesystem metadata ... " << std::flush;
 		/* Note: for a 1 TB partition with 4k block size, these bitmaps
@@ -161,23 +175,23 @@ static errcode_t examine_fs(ext2_filsys fs)
 	}
 
 	// Check commandline options against superblock bounds.
-	if (commandline_inode != 0)
+	if (Config::inode != 0)
 	{
-		if ((uint32_t)commandline_inode > fs->super->s_inodes_count)
+		if ((uint32_t)Config::inode > fs->super->s_inodes_count)
 		{
 			std::cout << std::flush;
-			std::cerr << progname << ": --inode: inode " << commandline_inode 
+			std::cerr << Config::progname << ": --inode: inode " << Config::inode 
 			<< " is out of range. There are only " << fs->super->s_inodes_count
 			<< " inodes." << std::endl;
 			return EU_EXAMINE_FAIL;
 		}
 	}
-	if (commandline_block != 0)
+	if (Config::block != 0)
 	{
-		if (commandline_block >= fs->super->s_blocks_count || commandline_block == 0)
+		if (Config::block >= fs->super->s_blocks_count || Config::block == 0)
 		{
 			std::cout << std::flush;
-			std::cerr << progname << ": --block: block " << commandline_block
+			std::cerr << Config::progname << ": --block: block " << Config::block
 			<< " is out of range." << std::endl
 			<< "Valid block numbers are from 1 to "
 			<< fs->super->s_blocks_count - 1 << std::endl;
@@ -185,13 +199,13 @@ static errcode_t examine_fs(ext2_filsys fs)
 		}
 	}
 
-	if (commandline_show_journal_inodes != 0)
+	if (Config::show_journal_inodes != 0)
 	{
-		if ((uint32_t)commandline_show_journal_inodes > fs->super->s_inodes_count)
+		if ((uint32_t)Config::show_journal_inodes > fs->super->s_inodes_count)
 		{
 			std::cout << std::flush;
-			std::cerr << progname << ": --show-journal-inodes: inode "
-			<< commandline_show_journal_inodes
+			std::cerr << Config::progname << ": --show-journal-inodes: inode "
+			<< Config::show_journal_inodes
 			<< " is out of range. There are only " << fs->super->s_inodes_count
 			<< " inodes." << std::endl;
 			return EU_EXAMINE_FAIL;
@@ -199,21 +213,21 @@ static errcode_t examine_fs(ext2_filsys fs)
 	}
 
 	// Handle --inode
-	if (commandline_inode != 0)
+	if (Config::inode != 0)
 	{
-		std::cout << "Group: " << ext2fs_group_of_ino(fs, commandline_inode)
+		std::cout << "Group: " << ext2fs_group_of_ino(fs, Config::inode)
 		<< std::endl;
-		print_inode(fs, commandline_inode);
+		print_inode(fs, Config::inode);
 	}
 
 	// Handle --block
-	if (commandline_block != 0 || (commandline_journal_block != 0 && commandline_journal))
+	if (Config::block != 0 || (Config::journal_block != 0 && Config::journal))
 	{
-		classify_block(fs, commandline_block);
+		classify_block(fs, Config::block);
 	}
 
 	ext2_filsys jfs = NULL;
-	errcode = get_journal_fs(fs, &jfs, commandline_journal_filename);
+	errcode = get_journal_fs(fs, &jfs, Config::journal_filename);
 	if (errcode) {
 		std::cout << "Error opening journal." << std::endl;
 		return errcode;
@@ -227,18 +241,18 @@ static errcode_t examine_fs(ext2_filsys fs)
 		return errcode;
 	}
 
-	if (commandline_superblock && commandline_journal)
+	if (Config::superblock && Config::journal)
 	{
 		std::cout << jsb << std::endl;
 	}
 
-	if (commandline_journal_block != 0)
+	if (Config::journal_block != 0)
 	{
-		if (commandline_journal_block >= jsb.s_maxlen)
+		if (Config::journal_block >= jsb.s_maxlen)
 		{
 			std::cout << std::flush;
-			std::cerr << progname << ": --journal-block: block "
-			<< commandline_journal_block
+			std::cerr << Config::progname << ": --journal-block: block "
+			<< Config::journal_block
 			<< " is out of range. There are only "<< jsb.s_maxlen
 			<< " blocks in the journal." << std::endl;
 			return EU_EXAMINE_FAIL;
@@ -249,38 +263,38 @@ static errcode_t examine_fs(ext2_filsys fs)
 	assert(jsb.s_header.h_magic == JFS_MAGIC_NUMBER);
 
 	// Start recovery here.
-	if (!commandline_restore_file.empty() ||
-			!commandline_restore_files.empty() ||
-			commandline_restore_all ||
-			!commandline_restore_inode.empty() ||
+	if (!Config::restore_file.empty() ||
+			!Config::restore_files.empty() ||
+			Config::restore_all ||
+			!Config::restore_inode.empty() ||
 			!commandline_restore_directory.empty() )
 	{
 		//Read the descriptors from the journal here
 		errcode = init_journal(fs, jfs, &jsb);
 		if (errcode) return EU_EXAMINE_FAIL;
 
-		errcode = extundelete_make_outputdir("RECOVERED_FILES/", progname.c_str());
+		errcode = extundelete_make_outputdir(Config::outputdir.c_str(), Config::progname.c_str());
 		if (errcode) return EU_EXAMINE_FAIL;
 	}
 	// Handle --restore-all
-	if (commandline_restore_all)
+	if (Config::restore_all)
 		errcode = restore_directory (fs, jfs, EXT2_ROOT_INO, "");
 	// Handle --restore-directory
 	if (!commandline_restore_directory.empty()) {
 		errcode = restore_file (fs, jfs, commandline_restore_directory.c_str());
 	}
 	// Handle --restore-file
-	if (!commandline_restore_file.empty()) {
-		errcode = restore_file(fs, jfs, commandline_restore_file);
+	if (!Config::restore_file.empty()) {
+		errcode = restore_file(fs, jfs, Config::restore_file);
 	}
 	// Handle --restore-files
-	if (!commandline_restore_files.empty()) {
+	if (!Config::restore_files.empty()) {
 		std::ifstream infile;
 		// Hopefully this is long enough
 		unsigned int namelen = 2560;
 		char *name = new char[namelen];
 
-		infile.open (commandline_restore_files.c_str(), std::ifstream::in);
+		infile.open (Config::restore_files.c_str(), std::ifstream::in);
 
 		while (infile.good()) {
 			infile.getline (name, namelen);
@@ -291,9 +305,9 @@ static errcode_t examine_fs(ext2_filsys fs)
 		delete[] name;
 	}
 	// Handle --restore-inode
-	if (!commandline_restore_inode.empty())
+	if (!Config::restore_inode.empty())
 	{
-		std::istringstream is (commandline_restore_inode);
+		std::istringstream is (Config::restore_inode);
 		int inodenr;
 		char comma;
 		while(is >> inodenr)
@@ -453,7 +467,7 @@ static int decode_options(int& argc, char**& argv)
 
 	std::string hist_arg;
 
-	while ((short_option = getopt_long(argc, argv, "j:vVb:B:", longopts, NULL)) != -1)
+	while ((short_option = getopt_long(argc, argv, "j:vVb:B:o:", longopts, NULL)) != -1)
 	{
 		switch (short_option)
 		{
@@ -461,16 +475,16 @@ static int decode_options(int& argc, char**& argv)
 			switch (long_option)
 			{
 			case opt_help:
-				print_usage(std::cout, progname);
+				print_usage(std::cout, Config::progname);
 				return EU_STOP;
 			case opt_version:
 				print_version();
 				return EU_STOP;
 			case opt_superblock:
-				commandline_superblock = true;
+				Config::superblock = true;
 				break;
 			case opt_journal:
-				commandline_journal = true;
+				Config::journal = true;
 				break;
 			case opt_after:
 				errno = 0;
@@ -489,91 +503,91 @@ static int decode_options(int& argc, char**& argv)
 				}
 				break;
 			case opt_restore_inode:
-				commandline_restore_inode = optarg;
+				Config::restore_inode = optarg;
 				break;
 			case opt_restore_file:
-				commandline_restore_file = optarg;
+				Config::restore_file = optarg;
 				break;
 			case opt_restore_files:
-				commandline_restore_files = optarg;
+				Config::restore_files = optarg;
 				break;
 			case opt_restore_directory:
 				commandline_restore_directory = optarg;
 				break;
 			case opt_restore_all:
-				commandline_restore_all = true;
+				Config::restore_all = true;
 				break;
 			case opt_inode_to_block:
 				errno = 0;
-				commandline_inode_to_block = strtoul(optarg, NULL, 10);
+				Config::inode_to_block = strtoul(optarg, NULL, 10);
 				if(errno) {
 					std::cerr << "Invalid parameter: --inode-to-block " << optarg << std::endl;
 					return EU_DECODE_FAIL;
 				}
-				if (commandline_inode_to_block < 1)
+				if (Config::inode_to_block < 1)
 				{
 					std::cout << std::flush;
-					std::cerr << progname << ": --inode-to-block: inode "
-					<< commandline_inode_to_block << " is out of range." << std::endl;
+					std::cerr << Config::progname << ": --inode-to-block: inode "
+					<< Config::inode_to_block << " is out of range." << std::endl;
 					return EU_DECODE_FAIL;
 				}
 				break;
 			case opt_inode:
 				errno = 0;
-				commandline_inode = strtoul(optarg, NULL, 10);
+				Config::inode = strtoul(optarg, NULL, 10);
 				if(errno) {
 					std::cerr << "Invalid parameter: --inode " << optarg << std::endl;
 					return EU_DECODE_FAIL;
 				}
-				if (commandline_inode < 1)
+				if (Config::inode < 1)
 				{
 					std::cout << std::flush;
-					std::cerr << progname << ": --inode: inode " << commandline_inode
+					std::cerr << Config::progname << ": --inode: inode " << Config::inode
 					<< " is out of range." << std::endl;
 					return EU_DECODE_FAIL;
 				}
 				break;
 			case opt_block:
 				errno = 0;
-				commandline_block = strtoul(optarg, NULL, 10);
+				Config::block = strtoul(optarg, NULL, 10);
 				if(errno) {
 					std::cerr << "Invalid parameter: --block " << optarg << std::endl;
 					return EU_DECODE_FAIL;
 				}
-				if (commandline_block < 1)
+				if (Config::block < 1)
 				{
 					std::cout << std::flush;
-					std::cerr << progname << ": --block: block " << commandline_block
+					std::cerr << Config::progname << ": --block: block " << Config::block
 					<< " is out of range." << std::endl;
 					return EU_DECODE_FAIL;
 				}
 				break;
 			case opt_show_journal_inodes:
 				errno = 0;
-				commandline_show_journal_inodes = strtoul(optarg, NULL, 10);
+				Config::show_journal_inodes = strtoul(optarg, NULL, 10);
 				if(errno) {
 					std::cerr << "Invalid parameter: --show-journal-inodes " << optarg << std::endl;
 					return EU_DECODE_FAIL;
 				}
-				if (commandline_show_journal_inodes < 1)
+				if (Config::show_journal_inodes < 1)
 				{
 					std::cout << std::flush;
-					std::cerr << progname << ": --show-journal-inodes: inode "
-					<< commandline_show_journal_inodes << " is out of range."
+					std::cerr << Config::progname << ": --show-journal-inodes: inode "
+					<< Config::show_journal_inodes << " is out of range."
 					<< std::endl;
 					return EU_DECODE_FAIL;
 				}
 				break;
 			case opt_journal_transaction:
 				errno = 0;
-				commandline_journal_transaction = strtoul(optarg, NULL, 10);
+				Config::journal_transaction = strtoul(optarg, NULL, 10);
 				if(errno) {
 					std::cerr << "Invalid parameter: --journal-transaction " << optarg << std::endl;
 					return EU_DECODE_FAIL;
 				}
 				break;
 			case opt_histogram:
-				commandline_histogram = optarg;
+				Config::histogram = optarg;
 				break;
 			case opt_log:
 				std::string logopts = optarg;
@@ -664,11 +678,11 @@ static int decode_options(int& argc, char**& argv)
 			}
 			break;
 		case 'j':
-			commandline_journal_filename = std::string(optarg);
+			Config::journal_filename = std::string(optarg);
 			break;
 		case 'b':
 			errno = 0;
-			commandline_backup_superblock = strtoul(optarg, NULL, 10);
+			Config::backup_superblock = strtoul(optarg, NULL, 10);
 			if(errno) {
 				std::cerr << "Invalid parameter: -b " << optarg << std::endl;
 				return EU_DECODE_FAIL;
@@ -676,11 +690,16 @@ static int decode_options(int& argc, char**& argv)
 			break;
 		case 'B':
 			errno = 0;
-			commandline_block_size = strtoul(optarg, NULL, 10);
+			Config::block_size = strtoul(optarg, NULL, 10);
 			if(errno) {
 				std::cerr << "Invalid parameter: -B " << optarg << std::endl;
 				return EU_DECODE_FAIL;
 			}
+			break;
+		case 'o':
+			Config::outputdir = std::string(optarg);
+			if(Config::outputdir.at(Config::outputdir.length()-1) != '/')
+				Config::outputdir.append("/");
 			break;
 		case 'v':
 		case 'V':
@@ -689,23 +708,23 @@ static int decode_options(int& argc, char**& argv)
 		}
 	}
 
-	commandline_action =
-			(commandline_inode != 0 ||
-			 commandline_block != 0 ||
-			 commandline_journal_block != 0 ||
-			 commandline_journal_transaction != 0 ||
-			 commandline_show_journal_inodes != 0 ||
-			 !commandline_histogram.empty() ||
-			 commandline_inode_to_block != 0 ||
-			 !commandline_restore_inode.empty() ||
-			 !commandline_restore_file.empty() ||
-			 !commandline_restore_files.empty() ||
+	Config::action =
+			(Config::inode != 0 ||
+			 Config::block != 0 ||
+			 Config::journal_block != 0 ||
+			 Config::journal_transaction != 0 ||
+			 Config::show_journal_inodes != 0 ||
+			 !Config::histogram.empty() ||
+			 Config::inode_to_block != 0 ||
+			 !Config::restore_inode.empty() ||
+			 !Config::restore_file.empty() ||
+			 !Config::restore_files.empty() ||
 			 !commandline_restore_directory.empty() ||
-			 commandline_restore_all);
-	if (!commandline_action && !commandline_superblock)
+			 Config::restore_all);
+	if (!Config::action && !Config::superblock)
 	{
 		std::cout << "No action specified; implying --superblock.\n";
-		commandline_superblock = true;
+		Config::superblock = true;
 	}
 	if (commandline_before < LONG_MAX || commandline_after)
 	{
@@ -730,12 +749,12 @@ static int decode_options(int& argc, char**& argv)
 	// Sanity checks on the user.
 	if (argc == 0)
 	{
-		std::cerr << progname << ": Missing device name." << std::endl;
-		print_usage(std::cerr, progname);
+		std::cerr << Config::progname << ": Missing device name." << std::endl;
+		print_usage(std::cerr, Config::progname);
 		return EU_DECODE_FAIL;
 	}
 	if (argc > 1) {
-		std::cerr << progname << ": Some unrecognized options were found. ";
+		std::cerr << Config::progname << ": Some unrecognized options were found. ";
 		std::cerr << "Use --help for a usage message." << std::endl;
 		return EU_DECODE_FAIL;
 	}
@@ -755,7 +774,7 @@ static errcode_t init_fs(const char* fsname, ext2_filsys *ret_fs) {
 		error = errno;
 		if (error != EOVERFLOW) {
 			std::cout << std::flush;
-			std::cerr << progname << ": stat \"" << fsname << "\": "
+			std::cerr << Config::progname << ": stat \"" << fsname << "\": "
 			<< strerror (error) << std::endl;
 			return EU_FS_ERR;
 		}
@@ -763,50 +782,56 @@ static errcode_t init_fs(const char* fsname, ext2_filsys *ret_fs) {
 	if (error == 0) {
 		if (S_ISDIR (statbuf.st_mode))
 		{
-			std::cerr << progname << ": \"" << fsname << "\" is a directory. You need "
+			std::cerr << Config::progname << ": \"" << fsname << "\" is a directory. You need "
 			<< "to use the raw filesystem device (or a copy thereof)." << std::endl;
 			return EU_FS_ERR;
 		}
 		if (!S_ISBLK(statbuf.st_mode) && statbuf.st_size < 2048)
 		{
-			std::cerr << progname << ": \"" << fsname << "\" is too small to be a"
+			std::cerr << Config::progname << ": \"" << fsname << "\" is too small to be a"
 			<< " filesystem (" << statbuf.st_size << " bytes)." << std::endl;
 			return EU_FS_ERR;
 		}
 	}
 
 	// Open the filesystem.
-	errcode = ext2fs_open (fsname, EXT2_FLAG_64BITS, commandline_backup_superblock,
-		commandline_block_size, io_mgr, ret_fs);
+	errcode = ext2fs_open (fsname, EXT2_FLAG_64BITS, Config::backup_superblock,
+		Config::block_size, io_mgr, ret_fs);
 	return errcode;
 }
 
-// Main program implementation
+
 int main(int argc, char* argv[])
 {
 	ext2_filsys fs;
 	errcode_t errcode;
 
-	progname = argv[0];
+	Config::progname = argv[0];
 
 	errcode = decode_options(argc, argv);
 	if (errcode) {
 		if (errcode == EU_STOP) return 0;
-		std::cerr << "Error parsing command-line options." << std::endl;
+		Log::error << Config::progname << ": Error parsing command-line options." << std::endl;
 		return EXIT_FAILURE;
 	}
+
+	initialize_ext2_error_table();
+	set_com_err_hook(Log_errors);
 
 	errcode = init_fs(*argv, &fs);
 	if (errcode) {
 		std::cout << std::flush;
-		std::cerr << progname << ": failed to read-only open device \""
-		<< *argv << "\": Error code " << errcode << std::endl;
+		com_err(Config::progname, errcode, "when trying to open filesystem %s", *argv);
 		return EXIT_FAILURE;
 	}
 
-	// Read constants from super block.
 	errcode = load_super_block (fs);
 	if (errcode == EU_FS_RECOVER) {
+		if (!isatty(STDOUT_FILENO)) {
+			Log::error << Config::progname << ": Mounted filesystem detected"
+			<< " when trying to load filesystem parameters" << std::endl;
+			return errcode;
+		}
 		char ans;
 		std::cin.width (1);
 		do {
@@ -824,19 +849,19 @@ int main(int argc, char* argv[])
 		} while (ans != 'y');
 	}
 	else if (errcode) {
-		std::cout << "Error: bad filesystem specified." << std::endl;
+		com_err(Config::progname, errcode, "when trying to load filesystem parameters");
 		return errcode;
 	}
 
 	errcode = examine_fs (fs);
 	if (errcode) {
-		std::cout << "Error: unable to examine filesystem." << std::endl;
+		com_err(Config::progname, errcode, "when trying to examine filesystem");
 		return errcode;
 	}
 
 	errcode = ext2fs_close (fs);
 	if (errcode) {
-		std::cerr << "Warning: Error closing filesystem; code " << errcode << std::endl;
+		com_err(Config::progname, errcode, "when trying to close filesystem");
 	}
 	// Sync here to ensure all recovered data is physically written to disk.
 	sync();
