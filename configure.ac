@@ -2,7 +2,11 @@
 # Process this file with "./autogen.sh" to produce a configure script.
 
 AC_PREREQ(2.59)
-AC_INIT(extundelete, m4_esyscmd([git describe --tags | tr -d '\012']), extundelete.sourceforge.net)
+m4_ifval(m4_esyscmd([printf %s $EU_VER]),
+[m4_define(EU_VERSION, m4_esyscmd([printf $EU_VER]) ) ],
+[m4_define(EU_VERSION, m4_esyscmd([git describe --tags | tr -d '\012']) ) ])
+AC_INIT(extundelete, EU_VERSION, extundelete.sourceforge.net)
+
 echo "Configuring ${PACKAGE_STRING}"
 AM_INIT_AUTOMAKE([-Wall -Werror foreign])
 AC_CONFIG_SRCDIR([src/extundelete.cc])
