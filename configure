@@ -5287,7 +5287,7 @@ else
            as_fn_error $? "Can't find ext2fs library" "$LINENO" 5
 fi
 
-for ac_func in ext2fs_get_generic_bitmap_start ext2fs_inode_table_loc ext2fs_extent_open2 ext2fs_blocks_count ext2fs_get_array ext2fs_get_generic_bmap_start ext2fs_test_block_bitmap2 ext2fs_bmap2 ext2fs_test_block_bitmap2 ext2fs_group_of_blk2 ext2fs_read_dir_block3 ext2fs_test_inode_bitmap2
+for ac_func in ext2fs_get_generic_bitmap_start ext2fs_inode_table_loc ext2fs_extent_open2 ext2fs_blocks_count ext2fs_get_array ext2fs_get_generic_bmap_start ext2fs_test_block_bitmap2 ext2fs_bmap2 ext2fs_test_block_bitmap2 ext2fs_group_of_blk2 ext2fs_read_dir_block3 ext2fs_test_inode_bitmap2 ext2fs_blocks_count
 do :
   as_ac_var=`$as_echo "ac_cv_func_$ac_func" | $as_tr_sh`
 ac_fn_c_check_func "$LINENO" "$ac_func" "$as_ac_var"
