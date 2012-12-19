@@ -553,7 +553,7 @@ static int decode_options(int& argc, char**& argv)
 							size_t pos = logopts.find_first_of(',');
 							std::string fname(logopts.substr(6, pos-6));
 							if( fname.compare("0") ) {
-								Config::dlogfile.open(fname);
+								Config::dlogfile.open(fname.c_str());
 								Log::debug.rdbuf(Config::dlogfile.rdbuf());
 							} else {
 								Log::debug.rdbuf(0);
@@ -568,7 +568,7 @@ static int decode_options(int& argc, char**& argv)
 							size_t pos = logopts.find_first_of(',');
 							std::string fname(logopts.substr(7, pos-7));
 							if( fname.compare("0") ) {
-								Config::slogfile.open(fname);
+								Config::slogfile.open(fname.c_str());
 								Log::status.rdbuf(Config::slogfile.rdbuf());
 							} else {
 								Log::status.rdbuf(0);
@@ -583,7 +583,7 @@ static int decode_options(int& argc, char**& argv)
 							size_t pos = logopts.find_first_of(',');
 							std::string fname(logopts.substr(5, pos-5));
 							if( fname.compare("0") ) {
-								Config::ilogfile.open(fname);
+								Config::ilogfile.open(fname.c_str());
 								Log::info.rdbuf(Config::ilogfile.rdbuf());
 							} else {
 								Log::info.rdbuf(0);
@@ -598,7 +598,7 @@ static int decode_options(int& argc, char**& argv)
 							size_t pos = logopts.find_first_of(',');
 							std::string fname(logopts.substr(5, pos-5));
 							if( fname.compare("0") ) {
-								Config::wlogfile.open(fname);
+								Config::wlogfile.open(fname.c_str());
 								Log::warn.rdbuf(Config::wlogfile.rdbuf());
 							} else {
 								Log::warn.rdbuf(0);
@@ -613,7 +613,7 @@ static int decode_options(int& argc, char**& argv)
 							size_t pos = logopts.find_first_of(',');
 							std::string fname(logopts.substr(6, pos-6));
 							if( fname.compare("0") ) {
-								Config::elogfile.open(fname);
+								Config::elogfile.open(fname.c_str());
 								Log::error.rdbuf(Config::elogfile.rdbuf());
 							} else {
 								Log::error.rdbuf(0);
@@ -626,7 +626,7 @@ static int decode_options(int& argc, char**& argv)
 
 					} else {
 						if( logopts.compare("0") ) {
-							Config::elogfile.open(logopts);
+							Config::elogfile.open(logopts.c_str());
 							Log::info.rdbuf(Config::elogfile.rdbuf());
 							Log::status.rdbuf(Config::elogfile.rdbuf());
 							Log::warn.rdbuf(Config::elogfile.rdbuf());

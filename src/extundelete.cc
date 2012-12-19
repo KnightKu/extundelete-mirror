@@ -2,7 +2,7 @@
 // 
 // Parts of this program are based upon ext3grep, which was licensed under the
 // GPL v2 or later and copyright 2008 by Carlo Wood.
-// extundelete Copyright 2009-10, by Nic Case
+// extundelete Copyright 2009-12, by Nic Case
 //
 // This program may be redistributed under the terms of the GNU Public
 // License version 2.
@@ -62,12 +62,15 @@ Important future enhancements:
 #include "config.h"
 
 /* C++ libraries */
+/* Needed definition to get limits such as UINT32_MAX on old c++ compilers */
+#define __STDC_LIMIT_MACROS 1
 #include <algorithm>
 #include <assert.h>
 #include <bitset>
 #include <cerrno>
 #include <climits>
 #include <cstring>
+#include <stdint.h>
 #include <cstdlib>
 #include <csignal>
 #include <ctime>
