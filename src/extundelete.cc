@@ -1739,14 +1739,14 @@ errcode_t restore_inode(ext2_filsys fs, ext2_filsys jfs, ext2_ino_t ino, const s
 			struct filebuf bufstruct = {&file, buf};
 			flag = extundelete_block_iterate3 (fs, *inode, BLOCK_FLAG_DATA_ONLY, NULL, write_block64, &bufstruct);
 			file.seekg( 0, std::ios::end );
-		    fsize = file.tellg();
+			fsize = file.tellg();
 			file.close();
 
 			if(!flag) {
 				std::streamoff rsize = EXT2_BLOCK_SIZE(fs->super) - inode->i_size % EXT2_BLOCK_SIZE(fs->super);
 				if( rsize == EXT2_BLOCK_SIZE(fs->super) )
 					rsize = 0;
-				if( EXT2_I_SIZE(inode) > fsize ) {
+				if( EXT2_I_SIZE(inode) > (uint64_t) fsize ) {
 					fsize = EXT2_I_SIZE(inode);
 				}
 				tsize = fsize - rsize;
