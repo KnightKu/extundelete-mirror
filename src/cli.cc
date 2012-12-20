@@ -58,7 +58,6 @@ blk64_t ext2fs_blocks_count(struct ext2_super_block *super) {
 
 
 namespace Config {
-	static std::string histogram = "";
 	static std::string progname;
 	static std::string journal_filename;
 	static std::string restore_file;
@@ -372,7 +371,6 @@ static errcode_t examine_fs(ext2_filsys fs)
 }
 
 
-//FIXME: Some of the string conversions are to long values that get stored as ints.
 static int decode_options(int& argc, char**& argv)
 {
 	int short_option;
@@ -384,7 +382,6 @@ static int decode_options(int& argc, char**& argv)
 		opt_block,
 		opt_after,
 		opt_before,
-		opt_histogram,
 		opt_journal,
 		opt_journal_block,
 		opt_journal_transaction,
@@ -406,7 +403,6 @@ static int decode_options(int& argc, char**& argv)
 		{"block", 1, &long_option, opt_block},
 		{"after", 1, &long_option, opt_after},
 		{"before", 1, &long_option, opt_before},
-		{"histogram", 1, &long_option, opt_histogram},
 		{"journal", 0, &long_option, opt_journal},
 		{"journal-block", 1, &long_option, opt_journal_block},
 		{"journal-transaction", 1, &long_option, opt_journal_transaction},
@@ -420,8 +416,6 @@ static int decode_options(int& argc, char**& argv)
 		{"log", 1, &long_option, opt_log},
 		{NULL, 0, NULL, 0}
 	};
-
-	std::string hist_arg;
 
 	while ((short_option = getopt_long(argc, argv, "j:vVb:B:o:", longopts, NULL)) != -1)
 	{
@@ -446,7 +440,7 @@ static int decode_options(int& argc, char**& argv)
 				errno = 0;
 				commandline_after = strtol(optarg, NULL, 10);
 				if(errno) {
-					std::cerr << "Invalid parameter: --after " << optarg << std::endl;
+					Log::error << "Invalid parameter: --after " << optarg << std::endl;
 					return EU_DECODE_FAIL;
 				}
 				break;
@@ -454,7 +448,7 @@ static int decode_options(int& argc, char**& argv)
 				errno = 0;
 				commandline_before = strtol(optarg, NULL, 10);
 				if(errno) {
-					std::cerr << "Invalid parameter: --before " << optarg << std::endl;
+					Log::error << "Invalid parameter: --before " << optarg << std::endl;
 					return EU_DECODE_FAIL;
 				}
 				break;
@@ -477,13 +471,12 @@ static int decode_options(int& argc, char**& argv)
 				errno = 0;
 				Config::inode_to_block = strtoul(optarg, NULL, 10);
 				if(errno) {
-					std::cerr << "Invalid parameter: --inode-to-block " << optarg << std::endl;
+					Log::error << "Invalid parameter: --inode-to-block " << optarg << std::endl;
 					return EU_DECODE_FAIL;
 				}
 				if (Config::inode_to_block < 1)
 				{
-					std::cout << std::flush;
-					std::cerr << Config::progname << ": --inode-to-block: inode "
+					Log::error << Config::progname << ": --inode-to-block: inode "
 					<< Config::inode_to_block << " is out of range." << std::endl;
 					return EU_DECODE_FAIL;
 				}
@@ -492,13 +485,12 @@ static int decode_options(int& argc, char**& argv)
 				errno = 0;
 				Config::inode = strtoul(optarg, NULL, 10);
 				if(errno) {
-					std::cerr << "Invalid parameter: --inode " << optarg << std::endl;
+					Log::error << "Invalid parameter: --inode " << optarg << std::endl;
 					return EU_DECODE_FAIL;
 				}
 				if (Config::inode < 1)
 				{
-					std::cout << std::flush;
-					std::cerr << Config::progname << ": --inode: inode " << Config::inode
+					Log::error << Config::progname << ": --inode: inode " << Config::inode
 					<< " is out of range." << std::endl;
 					return EU_DECODE_FAIL;
 				}
@@ -507,13 +499,12 @@ static int decode_options(int& argc, char**& argv)
 				errno = 0;
 				Config::block = strtoul(optarg, NULL, 10);
 				if(errno) {
-					std::cerr << "Invalid parameter: --block " << optarg << std::endl;
+					Log::error << "Invalid parameter: --block " << optarg << std::endl;
 					return EU_DECODE_FAIL;
 				}
 				if (Config::block < 1)
 				{
-					std::cout << std::flush;
-					std::cerr << Config::progname << ": --block: block " << Config::block
+					Log::error << Config::progname << ": --block: block " << Config::block
 					<< " is out of range." << std::endl;
 					return EU_DECODE_FAIL;
 				}
@@ -522,13 +513,12 @@ static int decode_options(int& argc, char**& argv)
 				errno = 0;
 				Config::show_journal_inodes = strtoul(optarg, NULL, 10);
 				if(errno) {
-					std::cerr << "Invalid parameter: --show-journal-inodes " << optarg << std::endl;
+					Log::error << "Invalid parameter: --show-journal-inodes " << optarg << std::endl;
 					return EU_DECODE_FAIL;
 				}
 				if (Config::show_journal_inodes < 1)
 				{
-					std::cout << std::flush;
-					std::cerr << Config::progname << ": --show-journal-inodes: inode "
+					Log::error << Config::progname << ": --show-journal-inodes: inode "
 					<< Config::show_journal_inodes << " is out of range."
 					<< std::endl;
 					return EU_DECODE_FAIL;
@@ -538,12 +528,9 @@ static int decode_options(int& argc, char**& argv)
 				errno = 0;
 				Config::journal_transaction = strtoul(optarg, NULL, 10);
 				if(errno) {
-					std::cerr << "Invalid parameter: --journal-transaction " << optarg << std::endl;
+					Log::error << "Invalid parameter: --journal-transaction " << optarg << std::endl;
 					return EU_DECODE_FAIL;
 				}
-				break;
-			case opt_histogram:
-				Config::histogram = optarg;
 				break;
 			case opt_log:
 				std::string logopts = optarg;
@@ -652,7 +639,7 @@ static int decode_options(int& argc, char**& argv)
 			errno = 0;
 			Config::backup_superblock = strtoul(optarg, NULL, 10);
 			if(errno) {
-				std::cerr << "Invalid parameter: -b " << optarg << std::endl;
+				Log::error << "Invalid parameter: -b " << optarg << std::endl;
 				return EU_DECODE_FAIL;
 			}
 			break;
@@ -660,7 +647,7 @@ static int decode_options(int& argc, char**& argv)
 			errno = 0;
 			Config::block_size = strtoul(optarg, NULL, 10);
 			if(errno) {
-				std::cerr << "Invalid parameter: -B " << optarg << std::endl;
+				Log::error << "Invalid parameter: -B " << optarg << std::endl;
 				return EU_DECODE_FAIL;
 			}
 			break;
@@ -682,7 +669,6 @@ static int decode_options(int& argc, char**& argv)
 			 Config::journal_block != 0 ||
 			 Config::journal_transaction != 0 ||
 			 Config::show_journal_inodes != 0 ||
-			 !Config::histogram.empty() ||
 			 Config::inode_to_block != 0 ||
 			 !Config::restore_inode.empty() ||
 			 !Config::restore_file.empty() ||
@@ -691,22 +677,22 @@ static int decode_options(int& argc, char**& argv)
 			 Config::restore_all);
 	if (!Config::action && !Config::superblock)
 	{
-		std::cout << "No action specified; implying --superblock.\n";
+		Log::status << "No action specified; implying --superblock.\n";
 		Config::superblock = true;
 	}
 	if (commandline_before < LONG_MAX || commandline_after)
 	{
-		std::cout << "Only show and process deleted entries if they are deleted ";
+		Log::status << "Only show and process deleted entries if they are deleted ";
 		// date -d@1234567890 converts a value to a readable string (using GNU date)
 		std::string after = to_string(commandline_after);
 		std::string before = to_string(commandline_before);
 		if (commandline_after)
-			std::cout << "on or after " << after;
+			Log::status << "on or after " << after;
 		if (commandline_before && commandline_after)
-			std::cout << " and ";
+			Log::status << " and ";
 		if (commandline_before)
-			std::cout << "before " << before;
-		std::cout << '.' << std::endl;
+			Log::status << "before " << before;
+		Log::status << '.' << std::endl;
 		if (commandline_before && commandline_after)
 			assert(commandline_after < commandline_before);
 	}
@@ -717,13 +703,13 @@ static int decode_options(int& argc, char**& argv)
 	// Sanity checks on the user.
 	if (argc == 0)
 	{
-		std::cerr << Config::progname << ": Missing device name." << std::endl;
-		print_usage(std::cerr, Config::progname);
+		Log::error << Config::progname << ": Missing device name." << std::endl;
+		print_usage(Log::error, Config::progname);
 		return EU_DECODE_FAIL;
 	}
 	if (argc > 1) {
-		std::cerr << Config::progname << ": Some unrecognized options were found. ";
-		std::cerr << "Use --help for a usage message." << std::endl;
+		Log::error << Config::progname << ": Some unrecognized options were found. "
+		<< "Use --help for a usage message." << std::endl;
 		return EU_DECODE_FAIL;
 	}
 
