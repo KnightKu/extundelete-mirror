@@ -4220,14 +4220,14 @@ else
 	EU_WCFLAGS="$EU_WCFLAGS"
 fi
 
- { $as_echo "$as_me:${as_lineno-$LINENO}: checking whether C compiler accepts -pedantic" >&5
-$as_echo_n "checking whether C compiler accepts -pedantic... " >&6; }
-if ${ax_cv_c_flags__pedantic+:} false; then :
+ { $as_echo "$as_me:${as_lineno-$LINENO}: checking whether C compiler accepts -Wall" >&5
+$as_echo_n "checking whether C compiler accepts -Wall... " >&6; }
+if ${ax_cv_c_flags__Wall+:} false; then :
   $as_echo_n "(cached) " >&6
 else
 
       ax_save_FLAGS=$CFLAGS
-      CFLAGS="-pedantic"
+      CFLAGS="-Wall"
       cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 
@@ -4240,19 +4240,19 @@ main ()
 }
 _ACEOF
 if ac_fn_c_try_compile "$LINENO"; then :
-  ax_cv_c_flags__pedantic=yes
+  ax_cv_c_flags__Wall=yes
 else
-  ax_cv_c_flags__pedantic=no
+  ax_cv_c_flags__Wall=no
 fi
 rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
       CFLAGS=$ax_save_FLAGS
 fi
 
-eval ax_check_compiler_flags=$ax_cv_c_flags__pedantic
+eval ax_check_compiler_flags=$ax_cv_c_flags__Wall
 { $as_echo "$as_me:${as_lineno-$LINENO}: result: $ax_check_compiler_flags" >&5
 $as_echo "$ax_check_compiler_flags" >&6; }
 if test "x$ax_check_compiler_flags" = xyes; then
-	EU_WCFLAGS="$EU_WCFLAGS -pedantic"
+	EU_WCFLAGS="$EU_WCFLAGS -Wall"
 else
 	EU_WCFLAGS="$EU_WCFLAGS"
 fi
@@ -4294,14 +4294,14 @@ else
 	EU_WCFLAGS="$EU_WCFLAGS"
 fi
 
- { $as_echo "$as_me:${as_lineno-$LINENO}: checking whether C compiler accepts -Wall" >&5
-$as_echo_n "checking whether C compiler accepts -Wall... " >&6; }
-if ${ax_cv_c_flags__Wall+:} false; then :
+ { $as_echo "$as_me:${as_lineno-$LINENO}: checking whether C compiler accepts -pedantic" >&5
+$as_echo_n "checking whether C compiler accepts -pedantic... " >&6; }
+if ${ax_cv_c_flags__pedantic+:} false; then :
   $as_echo_n "(cached) " >&6
 else
 
       ax_save_FLAGS=$CFLAGS
-      CFLAGS="-Wall"
+      CFLAGS="-pedantic"
       cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 
@@ -4314,21 +4314,21 @@ main ()
 }
 _ACEOF
 if ac_fn_c_try_compile "$LINENO"; then :
-  ax_cv_c_flags__Wall=yes
+  ax_cv_c_flags__pedantic=yes
 else
-  ax_cv_c_flags__Wall=no
+  ax_cv_c_flags__pedantic=no
 fi
 rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
       CFLAGS=$ax_save_FLAGS
 fi
 
-eval ax_check_compiler_flags=$ax_cv_c_flags__Wall
+eval ax_check_compiler_flags=$ax_cv_c_flags__pedantic
 { $as_echo "$as_me:${as_lineno-$LINENO}: result: $ax_check_compiler_flags" >&5
 $as_echo "$ax_check_compiler_flags" >&6; }
 if test "x$ax_check_compiler_flags" = xyes; then
-	EU_WCFLAGS="$EU_WCFLAGS -Wall"
+	EU_SCFLAGS="$EU_SCFLAGS -pedantic"
 else
-	EU_WCFLAGS="$EU_WCFLAGS"
+	EU_SCFLAGS="$EU_SCFLAGS"
 fi
 
  { $as_echo "$as_me:${as_lineno-$LINENO}: checking whether C compiler accepts -Wredundant-decls" >&5
@@ -4363,9 +4363,9 @@ eval ax_check_compiler_flags=$ax_cv_c_flags__Wredundant_decls
 { $as_echo "$as_me:${as_lineno-$LINENO}: result: $ax_check_compiler_flags" >&5
 $as_echo "$ax_check_compiler_flags" >&6; }
 if test "x$ax_check_compiler_flags" = xyes; then
-	EU_WCFLAGS="$EU_WCFLAGS -Wredundant-decls"
+	EU_SCFLAGS="$EU_SCFLAGS -Wredundant-decls"
 else
-	EU_WCFLAGS="$EU_WCFLAGS"
+	EU_SCFLAGS="$EU_SCFLAGS"
 fi
 
  { $as_echo "$as_me:${as_lineno-$LINENO}: checking whether C compiler accepts -Wshadow" >&5
@@ -4400,9 +4400,9 @@ eval ax_check_compiler_flags=$ax_cv_c_flags__Wshadow
 { $as_echo "$as_me:${as_lineno-$LINENO}: result: $ax_check_compiler_flags" >&5
 $as_echo "$ax_check_compiler_flags" >&6; }
 if test "x$ax_check_compiler_flags" = xyes; then
-	EU_WCFLAGS="$EU_WCFLAGS -Wshadow"
+	EU_SCFLAGS="$EU_SCFLAGS -Wshadow"
 else
-	EU_WCFLAGS="$EU_WCFLAGS"
+	EU_SCFLAGS="$EU_SCFLAGS"
 fi
 
  { $as_echo "$as_me:${as_lineno-$LINENO}: checking whether C compiler accepts -Wpointer-arith" >&5
@@ -4437,9 +4437,9 @@ eval ax_check_compiler_flags=$ax_cv_c_flags__Wpointer_arith
 { $as_echo "$as_me:${as_lineno-$LINENO}: result: $ax_check_compiler_flags" >&5
 $as_echo "$ax_check_compiler_flags" >&6; }
 if test "x$ax_check_compiler_flags" = xyes; then
-	EU_WCFLAGS="$EU_WCFLAGS -Wpointer-arith"
+	EU_SCFLAGS="$EU_SCFLAGS -Wpointer-arith"
 else
-	EU_WCFLAGS="$EU_WCFLAGS"
+	EU_SCFLAGS="$EU_SCFLAGS"
 fi
 
  { $as_echo "$as_me:${as_lineno-$LINENO}: checking whether C compiler accepts -Wwrite-strings" >&5
@@ -4474,9 +4474,9 @@ eval ax_check_compiler_flags=$ax_cv_c_flags__Wwrite_strings
 { $as_echo "$as_me:${as_lineno-$LINENO}: result: $ax_check_compiler_flags" >&5
 $as_echo "$ax_check_compiler_flags" >&6; }
 if test "x$ax_check_compiler_flags" = xyes; then
-	EU_WCFLAGS="$EU_WCFLAGS -Wwrite-strings"
+	EU_SCFLAGS="$EU_SCFLAGS -Wwrite-strings"
 else
-	EU_WCFLAGS="$EU_WCFLAGS"
+	EU_SCFLAGS="$EU_SCFLAGS"
 fi
 
  { $as_echo "$as_me:${as_lineno-$LINENO}: checking whether C compiler accepts -Winit-self" >&5
@@ -4511,9 +4511,9 @@ eval ax_check_compiler_flags=$ax_cv_c_flags__Winit_self
 { $as_echo "$as_me:${as_lineno-$LINENO}: result: $ax_check_compiler_flags" >&5
 $as_echo "$ax_check_compiler_flags" >&6; }
 if test "x$ax_check_compiler_flags" = xyes; then
-	EU_WCFLAGS="$EU_WCFLAGS -Winit-self"
+	EU_SCFLAGS="$EU_SCFLAGS -Winit-self"
 else
-	EU_WCFLAGS="$EU_WCFLAGS"
+	EU_SCFLAGS="$EU_SCFLAGS"
 fi
 
  { $as_echo "$as_me:${as_lineno-$LINENO}: checking whether C compiler accepts -Wconversion" >&5
@@ -4740,15 +4740,11 @@ else
 	EU_WCXXFLAGS="$EU_WCXXFLAGS"
 fi
 
- { $as_echo "$as_me:${as_lineno-$LINENO}: checking whether C++ compiler accepts -pedantic" >&5
-$as_echo_n "checking whether C++ compiler accepts -pedantic... " >&6; }
-if ${ax_cv_cxx_flags__pedantic+:} false; then :
-  $as_echo_n "(cached) " >&6
-else
-
-      ax_save_FLAGS=$CXXFLAGS
-      CXXFLAGS="-pedantic"
-      cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+ { $as_echo "$as_me:${as_lineno-$LINENO}: checking whether C++ compiler accepts -std=c++11" >&5
+$as_echo_n "checking whether C++ compiler accepts -std=c++11... " >&6; }
+ax_save_FLAGS=$CXXFLAGS
+   CXXFLAGS="-std=c++11"
+   cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 
 int
@@ -4760,19 +4756,17 @@ main ()
 }
 _ACEOF
 if ac_fn_cxx_try_compile "$LINENO"; then :
-  ax_cv_cxx_flags__pedantic=yes
+  eval `$as_echo "ax_cv_cxx_flags_-std=c++11" | $as_tr_sh`=yes
 else
-  ax_cv_cxx_flags__pedantic=no
+  eval `$as_echo "ax_cv_cxx_flags_-std=c++11" | $as_tr_sh`=no
 fi
 rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
-      CXXFLAGS=$ax_save_FLAGS
-fi
-
-eval ax_check_compiler_flags=$ax_cv_cxx_flags__pedantic
+   CXXFLAGS=$ax_save_FLAGS
+eval ax_check_compiler_flags=$`$as_echo "ax_cv_cxx_flags_-std=c++11" | $as_tr_sh`
 { $as_echo "$as_me:${as_lineno-$LINENO}: result: $ax_check_compiler_flags" >&5
 $as_echo "$ax_check_compiler_flags" >&6; }
 if test "x$ax_check_compiler_flags" = xyes; then
-	EU_WCXXFLAGS="$EU_WCXXFLAGS -pedantic"
+	EU_WCXXFLAGS="$EU_WCXXFLAGS -std=c++11"
 else
 	EU_WCXXFLAGS="$EU_WCXXFLAGS"
 fi
@@ -4851,6 +4845,68 @@ else
 	EU_WCXXFLAGS="$EU_WCXXFLAGS"
 fi
 
+ { $as_echo "$as_me:${as_lineno-$LINENO}: checking whether C++ compiler accepts -std=c++0x -pedantic" >&5
+$as_echo_n "checking whether C++ compiler accepts -std=c++0x -pedantic... " >&6; }
+ax_save_FLAGS=$CXXFLAGS
+   CXXFLAGS="-std=c++0x -pedantic"
+   cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+int
+main ()
+{
+
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_cxx_try_compile "$LINENO"; then :
+  eval `$as_echo "ax_cv_cxx_flags_-std=c++0x -pedantic" | $as_tr_sh`=yes
+else
+  eval `$as_echo "ax_cv_cxx_flags_-std=c++0x -pedantic" | $as_tr_sh`=no
+fi
+rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
+   CXXFLAGS=$ax_save_FLAGS
+eval ax_check_compiler_flags=$`$as_echo "ax_cv_cxx_flags_-std=c++0x -pedantic" | $as_tr_sh`
+{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $ax_check_compiler_flags" >&5
+$as_echo "$ax_check_compiler_flags" >&6; }
+if test "x$ax_check_compiler_flags" = xyes; then
+	EU_SCXXFLAGS="$EU_SCXXFLAGS -pedantic"
+else
+	EU_SCXXFLAGS="$EU_SCXXFLAGS"
+fi
+
+ { $as_echo "$as_me:${as_lineno-$LINENO}: checking whether C++ compiler accepts -std=c++11 -pedantic" >&5
+$as_echo_n "checking whether C++ compiler accepts -std=c++11 -pedantic... " >&6; }
+ax_save_FLAGS=$CXXFLAGS
+   CXXFLAGS="-std=c++11 -pedantic"
+   cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+int
+main ()
+{
+
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_cxx_try_compile "$LINENO"; then :
+  eval `$as_echo "ax_cv_cxx_flags_-std=c++11 -pedantic" | $as_tr_sh`=yes
+else
+  eval `$as_echo "ax_cv_cxx_flags_-std=c++11 -pedantic" | $as_tr_sh`=no
+fi
+rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
+   CXXFLAGS=$ax_save_FLAGS
+eval ax_check_compiler_flags=$`$as_echo "ax_cv_cxx_flags_-std=c++11 -pedantic" | $as_tr_sh`
+{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $ax_check_compiler_flags" >&5
+$as_echo "$ax_check_compiler_flags" >&6; }
+if test "x$ax_check_compiler_flags" = xyes; then
+	EU_SCXXFLAGS="$EU_SCXXFLAGS -pedantic"
+else
+	EU_SCXXFLAGS="$EU_SCXXFLAGS"
+fi
+
  { $as_echo "$as_me:${as_lineno-$LINENO}: checking whether C++ compiler accepts -Wredundant-decls" >&5
 $as_echo_n "checking whether C++ compiler accepts -Wredundant-decls... " >&6; }
 if ${ax_cv_cxx_flags__Wredundant_decls+:} false; then :
@@ -4883,9 +4939,9 @@ eval ax_check_compiler_flags=$ax_cv_cxx_flags__Wredundant_decls
 { $as_echo "$as_me:${as_lineno-$LINENO}: result: $ax_check_compiler_flags" >&5
 $as_echo "$ax_check_compiler_flags" >&6; }
 if test "x$ax_check_compiler_flags" = xyes; then
-	EU_WCXXFLAGS="$EU_WCXXFLAGS -Wredundant-decls"
+	EU_SCXXFLAGS="$EU_SCXXFLAGS -Wredundant-decls"
 else
-	EU_WCXXFLAGS="$EU_WCXXFLAGS"
+	EU_SCXXFLAGS="$EU_SCXXFLAGS"
 fi
 
  { $as_echo "$as_me:${as_lineno-$LINENO}: checking whether C++ compiler accepts -Wshadow" >&5
@@ -4920,9 +4976,9 @@ eval ax_check_compiler_flags=$ax_cv_cxx_flags__Wshadow
 { $as_echo "$as_me:${as_lineno-$LINENO}: result: $ax_check_compiler_flags" >&5
 $as_echo "$ax_check_compiler_flags" >&6; }
 if test "x$ax_check_compiler_flags" = xyes; then
-	EU_WCXXFLAGS="$EU_WCXXFLAGS -Wshadow"
+	EU_SCXXFLAGS="$EU_SCXXFLAGS -Wshadow"
 else
-	EU_WCXXFLAGS="$EU_WCXXFLAGS"
+	EU_SCXXFLAGS="$EU_SCXXFLAGS"
 fi
 
  { $as_echo "$as_me:${as_lineno-$LINENO}: checking whether C++ compiler accepts -Wpointer-arith" >&5
@@ -4957,9 +5013,9 @@ eval ax_check_compiler_flags=$ax_cv_cxx_flags__Wpointer_arith
 { $as_echo "$as_me:${as_lineno-$LINENO}: result: $ax_check_compiler_flags" >&5
 $as_echo "$ax_check_compiler_flags" >&6; }
 if test "x$ax_check_compiler_flags" = xyes; then
-	EU_WCXXFLAGS="$EU_WCXXFLAGS -Wpointer-arith"
+	EU_SCXXFLAGS="$EU_SCXXFLAGS -Wpointer-arith"
 else
-	EU_WCXXFLAGS="$EU_WCXXFLAGS"
+	EU_SCXXFLAGS="$EU_SCXXFLAGS"
 fi
 
  { $as_echo "$as_me:${as_lineno-$LINENO}: checking whether C++ compiler accepts -Wwrite-strings" >&5
@@ -4994,9 +5050,9 @@ eval ax_check_compiler_flags=$ax_cv_cxx_flags__Wwrite_strings
 { $as_echo "$as_me:${as_lineno-$LINENO}: result: $ax_check_compiler_flags" >&5
 $as_echo "$ax_check_compiler_flags" >&6; }
 if test "x$ax_check_compiler_flags" = xyes; then
-	EU_WCXXFLAGS="$EU_WCXXFLAGS -Wwrite-strings"
+	EU_SCXXFLAGS="$EU_SCXXFLAGS -Wwrite-strings"
 else
-	EU_WCXXFLAGS="$EU_WCXXFLAGS"
+	EU_SCXXFLAGS="$EU_SCXXFLAGS"
 fi
 
  { $as_echo "$as_me:${as_lineno-$LINENO}: checking whether C++ compiler accepts -Woverloaded-virtual" >&5
@@ -5031,9 +5087,9 @@ eval ax_check_compiler_flags=$ax_cv_cxx_flags__Woverloaded_virtual
 { $as_echo "$as_me:${as_lineno-$LINENO}: result: $ax_check_compiler_flags" >&5
 $as_echo "$ax_check_compiler_flags" >&6; }
 if test "x$ax_check_compiler_flags" = xyes; then
-	EU_WCXXFLAGS="$EU_WCXXFLAGS -Woverloaded-virtual"
+	EU_SCXXFLAGS="$EU_SCXXFLAGS -Woverloaded-virtual"
 else
-	EU_WCXXFLAGS="$EU_WCXXFLAGS"
+	EU_SCXXFLAGS="$EU_SCXXFLAGS"
 fi
 
  { $as_echo "$as_me:${as_lineno-$LINENO}: checking whether C++ compiler accepts -Weffc++" >&5
@@ -5068,9 +5124,9 @@ eval ax_check_compiler_flags=$ax_cv_cxx_flags__Weffcpp
 { $as_echo "$as_me:${as_lineno-$LINENO}: result: $ax_check_compiler_flags" >&5
 $as_echo "$ax_check_compiler_flags" >&6; }
 if test "x$ax_check_compiler_flags" = xyes; then
-	EU_WCXXFLAGS="$EU_WCXXFLAGS -Weffc++"
+	EU_SCXXFLAGS="$EU_SCXXFLAGS -Weffc++"
 else
-	EU_WCXXFLAGS="$EU_WCXXFLAGS"
+	EU_SCXXFLAGS="$EU_SCXXFLAGS"
 fi
 
  { $as_echo "$as_me:${as_lineno-$LINENO}: checking whether C++ compiler accepts -Winit-self" >&5
@@ -5105,9 +5161,9 @@ eval ax_check_compiler_flags=$ax_cv_cxx_flags__Winit_self
 { $as_echo "$as_me:${as_lineno-$LINENO}: result: $ax_check_compiler_flags" >&5
 $as_echo "$ax_check_compiler_flags" >&6; }
 if test "x$ax_check_compiler_flags" = xyes; then
-	EU_WCXXFLAGS="$EU_WCXXFLAGS -Winit-self"
+	EU_SCXXFLAGS="$EU_SCXXFLAGS -Winit-self"
 else
-	EU_WCXXFLAGS="$EU_WCXXFLAGS"
+	EU_SCXXFLAGS="$EU_SCXXFLAGS"
 fi
 
  { $as_echo "$as_me:${as_lineno-$LINENO}: checking whether C++ compiler accepts -Wconversion" >&5
@@ -5287,7 +5343,7 @@ else
            as_fn_error $? "Can't find ext2fs library" "$LINENO" 5
 fi
 
-for ac_func in ext2fs_get_generic_bitmap_start ext2fs_inode_table_loc ext2fs_extent_open2 ext2fs_blocks_count ext2fs_get_array ext2fs_get_generic_bmap_start ext2fs_test_block_bitmap2 ext2fs_bmap2 ext2fs_test_block_bitmap2 ext2fs_group_of_blk2 ext2fs_read_dir_block3 ext2fs_test_inode_bitmap2 ext2fs_blocks_count
+for ac_func in ext2fs_get_generic_bitmap_start ext2fs_inode_table_loc ext2fs_extent_open2 ext2fs_blocks_count ext2fs_get_array ext2fs_get_generic_bmap_start ext2fs_test_block_bitmap2 ext2fs_bmap2 ext2fs_test_block_bitmap2 ext2fs_group_of_blk2 ext2fs_read_dir_block3 ext2fs_test_inode_bitmap2
 do :
   as_ac_var=`$as_echo "ac_cv_func_$ac_func" | $as_tr_sh`
 ac_fn_c_check_func "$LINENO" "$ac_func" "$as_ac_var"
