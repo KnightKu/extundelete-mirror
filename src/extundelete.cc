@@ -477,7 +477,7 @@ int load_super_block(ext2_filsys fs)
 	if ((super_block.s_feature_compat & EXT2_FEATURE_COMPAT_IMAGIC_INODES))
 		Log::warn << "WARNING: Unknown file system feature: EXT2_FEATURE_COMPAT_IMAGIC_INODES\n";
 	if ((super_block.s_feature_compat & EXT2_FEATURE_COMPAT_EXT_ATTR))
-		Log::warn << "WARNING: Extended attributes are not restored.\n";
+		Log::warn << "NOTICE: Extended attributes are not restored.\n";
 
 	if ((super_block.s_feature_incompat & EXT2_FEATURE_INCOMPAT_COMPRESSION))
 		Log::warn << "WARNING: File systems with EXT2_FEATURE_INCOMPAT_COMPRESSION set (like this one) have not been tested.\n";
@@ -962,22 +962,18 @@ int restore_directory(ext2_filsys fs, ext2_filsys jfs, ext2_ino_t dirino, std::s
 	return 0;
 }
 
-/* Read a single block from the journal */
+
+/* Read a single block from the journal
+*/
 errcode_t read_journal_block(ext2_filsys fs, blk64_t n, char *buf)
 {
 	errcode_t retval;
-	if(fs->super->s_journal_inum) {
-		retval = read_block64(fs, &n, 0, 0, 0, buf);
-	}
-	else {
-		// External journal
-		if((retval = read_block64(fs, &n, 0, 0, 0, buf) )) {
-			com_err("extundelete", retval, "while reading journal block");
-			exit(1);
-		}
-	}
+	retval = read_block64(fs, &n, 0, 0, 0, buf);
+	if(retval)
+		com_err("extundelete", retval, "while reading journal block");
 	return retval;
 }
+
 
 /*
  * Read contents of journal file into global variables
