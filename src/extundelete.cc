@@ -1798,8 +1798,8 @@ static void parse_inode_block(ext2_filsys fs, struct ext2_inode *inode, const ch
 #endif
 }
 
-int get_journal_fs (ext2_filsys fs, ext2_filsys *jfs, std::string journal_filename) {
 
+int get_journal_fs (ext2_filsys fs, ext2_filsys *jfs, std::string journal_filename) {
 	errcode_t errcode;
 	if (fs->super->s_journal_inum)
 	{
@@ -1816,8 +1816,8 @@ int get_journal_fs (ext2_filsys fs, ext2_filsys *jfs, std::string journal_filena
 		errcode = ext2fs_open( journal_filename.c_str(),
 			EXT2_FLAG_JOURNAL_DEV_OK, 0, 0, io_mgr, jfs);
 		if (errcode) {
-			Log::error << "Error opening external journal." << std::endl;
-			return EU_EXAMINE_FAIL;
+			com_err("extundelete", errcode, "while opening external journal");
+			return errcode;
 		}
 	}
 	return 0;	
