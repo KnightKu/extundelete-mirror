@@ -1823,34 +1823,45 @@ int get_journal_fs (ext2_filsys fs, ext2_filsys *jfs, std::string journal_filena
 	return 0;	
 }
 
+
 int read_journal_superblock (ext2_filsys fs, ext2_filsys jfs,
 		journal_superblock_t *journal_superblock) {
-
+	int retval = 0;
 	errcode_t errcode;
 	char *buf = new char[block_size_];
+	blk64_t blknum;
+	struct ext2_inode *inode = NULL;
 	// Read the journal superblock.
 	if (fs->super->s_journal_inum)
 	{
 		// Read internal journal superblock
-		struct ext2_inode *inode;
 		inode = (struct ext2_inode *) operator new(EXT2_INODE_SIZE(fs->super));
-		ext2_ino_t journal_ino = fs->super->s_journal_inum;
-		ext2fs_read_inode_full (fs, journal_ino, inode, EXT2_INODE_SIZE(fs->super));
-		blk64_t blknum;
-		errcode = ext2fs_bmap2(fs, journal_ino, inode, NULL, 0, 0, NULL, &blknum);
+		errcode = ext2fs_read_inode_full (fs, fs->super->s_journal_inum, inode, EXT2_INODE_SIZE(fs->super));
 		if(errcode) {
-			Log::error << "bmap returned " << errcode << std::endl;
-			return EU_EXAMINE_FAIL;
+			com_err("extundelete", errcode, "while reading internal journal inode");
+			retval = errcode;
+			goto finally;
 		}
-		read_block64(jfs, &blknum, 0, 0, 0, buf);
-		delete inode;
+		errcode = ext2fs_bmap2(fs, fs->super->s_journal_inum, inode, NULL, 0, 0, NULL, &blknum);
+		if(errcode) {
+			com_err("extundelete", errcode, "while mapping internal journal superblock");
+			retval = errcode;
+			goto finally;
+		}
+		errcode = read_block64(jfs, &blknum, 0, 0, 0, buf);
+		if(errcode) {
+			com_err("extundelete", errcode, "while reading internal journal superblock");
+			retval = errcode;
+			goto finally;
+		}
 	}
 	else {
 		// Read the journal superblock from an external journal.
-		blk64_t jblk = jfs->super->s_first_data_block + 1;
-		if (( errcode = read_block64(jfs, &jblk, 0, 0, 0, buf) )) {
-			com_err("extundelete", errcode, "while reading journal superblock");
-			return EU_EXAMINE_FAIL;
+		blknum = jfs->super->s_first_data_block + 1;
+		if (( errcode = read_block64(jfs, &blknum, 0, 0, 0, buf) )) {
+			com_err("extundelete", errcode, "while reading external journal superblock");
+			retval = errcode;
+			goto finally;
 		}
 	}
 
@@ -1858,10 +1869,13 @@ int read_journal_superblock (ext2_filsys fs, ext2_filsys jfs,
 	journal_superblock_to_cpu(buf);
 	memcpy(journal_superblock, buf, sizeof(*journal_superblock));
 
-	delete[] buf;
 	// Sanity check to ensure there is no endianness problem.
-	if(journal_superblock->s_header.h_magic != JFS_MAGIC_NUMBER) return EU_FS_ERR;
-	return 0;
+	if(journal_superblock->s_header.h_magic != JFS_MAGIC_NUMBER)  retval = EU_FS_ERR;
+
+finally:
+	if(inode)  delete inode;
+	delete[] buf;
+	return retval;
 }
 
 
@@ -1869,6 +1883,7 @@ int print_inode(ext2_filsys fs, ext2_ino_t ino) {
 	int retval = 0;
 	errcode_t errcode;
 	struct ext2_inode *inode;
+	int allocated;
 	inode = (struct ext2_inode *) operator new(EXT2_INODE_SIZE(fs->super));
 	errcode = ext2fs_read_inode_full (fs, ino, inode, EXT2_INODE_SIZE(fs->super));
 	if(errcode) {
@@ -1880,7 +1895,7 @@ int print_inode(ext2_filsys fs, ext2_ino_t ino) {
 	dump_hex_to(std::cout, reinterpret_cast<char const*> (inode), inode_size_);
 	std::cout << std::endl;
 
-	int allocated = extundelete_test_inode_bitmap(fs, ino);
+	allocated = extundelete_test_inode_bitmap(fs, ino);
 	if (allocated)
 		std::cout << "Inode is Allocated" << std::endl;
 	else
