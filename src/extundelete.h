@@ -87,7 +87,7 @@ int read_journal_superblock (ext2_filsys fs, ext2_filsys jfs,
 		journal_superblock_t *journal_superblock);
 int print_inode(ext2_filsys fs, ext2_ino_t ino);
 void classify_block(ext2_filsys fs, blk64_t blocknr);
-int extundelete_make_outputdir(const char * const dirname, const char * const progname);
+int extundelete_make_outputdir(const char * const dirname);
 
 // From insertionops.cc
 std::ostream& operator<<(std::ostream& os, const ext2_super_block* const s_block);

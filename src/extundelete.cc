@@ -1887,7 +1887,7 @@ int print_inode(ext2_filsys fs, ext2_ino_t ino) {
 }
 
 
-int extundelete_make_outputdir(const char * const dirname, const char * const progname) {
+int extundelete_make_outputdir(const char * const dirname) {
 	struct stat statbuf;
 	int retval;
 	errno = 0;
@@ -1895,11 +1895,8 @@ int extundelete_make_outputdir(const char * const dirname, const char * const pr
 	{
 		if (errno != ENOENT)
 		{
-			int error = errno;
-			Log::warn << std::flush;
-			Log::error << progname << ": stat: " << dirname << ": "
-			<< strerror(error) << std::endl;
-			return EU_EXAMINE_FAIL;
+			retval = errno;
+			return retval;
 		}
 		else {
 			std::string dname = dirname;
@@ -1907,22 +1904,17 @@ int extundelete_make_outputdir(const char * const dirname, const char * const pr
 			do {
 				retval = mkdir(dname.substr(0, nextslash).c_str(), 0755);
 				if(retval && errno != EEXIST) {
-					int error = errno;
-					Log::warn << std::flush;
-					Log::error << progname << ": failed to create output directory "
-					<< dirname << ": " << strerror(error) << std::endl;
-					return EU_EXAMINE_FAIL;
+					retval = errno;
+					return retval;
 				}
 				nextslash = dname.find('/', nextslash+1);
 			} while(nextslash != std::string::npos);
+			Log::info << "Writing output to directory " << dirname << std::endl;
 		}
-		Log::info << "Writing output to directory " << dirname << std::endl;
 	}
 	else if (!S_ISDIR(statbuf.st_mode))
 	{
-		Log::warn << std::flush;
-		Log::error << progname << ": " << dirname
-		<< " exists but is not a directory!" << std::endl;
+		/* File exists, but is not a directory */
 		return EU_EXAMINE_FAIL;
 	}
 

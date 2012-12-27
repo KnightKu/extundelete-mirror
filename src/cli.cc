@@ -292,7 +292,7 @@ static errcode_t examine_fs(ext2_filsys fs)
 			return errcode;
 		}
 
-		errcode = extundelete_make_outputdir(Config::outputdir.c_str(), Config::progname.c_str());
+		errcode = extundelete_make_outputdir(Config::outputdir.c_str());
 		if (errcode) {
 			com_err(Config::progname.c_str(), errcode, "while creating output directory.");
 			return errcode;
