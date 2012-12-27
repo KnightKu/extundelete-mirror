@@ -1785,14 +1785,16 @@ errcode_t restore_inode(ext2_filsys fs, ext2_filsys jfs, ext2_ino_t ino, const s
 	return retval;
 }
 
-static void parse_inode_block(ext2_filsys fs, struct ext2_inode *inode, const char *buf, ext2_ino_t ino)
-{
+
+static void parse_inode_block(ext2_filsys fs, struct ext2_inode *inode,
+		const char *buf, ext2_ino_t ino) {
 	int offset = (ino-1) % (block_size_/inode_size_);
 	const char *inodebuf = buf + offset*inode_size_;
 #ifdef WORDS_BIGENDIAN
 	int n = 1 ;
 	int hostorder = (*(char *) &n != 1);
-	ext2fs_swap_inode_full(fs, (struct ext2_inode_large *) inode, (struct ext2_inode_large *) inodebuf, 0, EXT2_INODE_SIZE(fs->super));
+	ext2fs_swap_inode_full(fs, (struct ext2_inode_large *) inode,
+		(struct ext2_inode_large *) inodebuf, 0, EXT2_INODE_SIZE(fs->super));
 #else
 	memcpy(inode, inodebuf, EXT2_INODE_SIZE(fs->super) );
 #endif
