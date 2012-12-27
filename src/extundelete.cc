@@ -1866,33 +1866,33 @@ int read_journal_superblock (ext2_filsys fs, ext2_filsys jfs,
 
 
 int print_inode(ext2_filsys fs, ext2_ino_t ino) {
-		int retval = 0;
-		errcode_t errcode;
-		struct ext2_inode *inode;
-		inode = (struct ext2_inode *) operator new(EXT2_INODE_SIZE(fs->super));
-		errcode = ext2fs_read_inode_full (fs, ino, inode, EXT2_INODE_SIZE(fs->super));
-		if(errcode) {
-			com_err("extundelete", errcode, "while reading inode.");
-			retval = errcode;
-			goto finally;
-		}
-		std::cout << "Contents of inode " << ino << ":" << std::endl;
-		dump_hex_to(std::cout, reinterpret_cast<char const*> (inode), inode_size_);
-		std::cout << std::endl;
+	int retval = 0;
+	errcode_t errcode;
+	struct ext2_inode *inode;
+	inode = (struct ext2_inode *) operator new(EXT2_INODE_SIZE(fs->super));
+	errcode = ext2fs_read_inode_full (fs, ino, inode, EXT2_INODE_SIZE(fs->super));
+	if(errcode) {
+		com_err("extundelete", errcode, "while reading inode.");
+		retval = errcode;
+		goto finally;
+	}
+	std::cout << "Contents of inode " << ino << ":" << std::endl;
+	dump_hex_to(std::cout, reinterpret_cast<char const*> (inode), inode_size_);
+	std::cout << std::endl;
 
-		int allocated = extundelete_test_inode_bitmap(fs, ino);
-		if (allocated)
-			std::cout << "Inode is Allocated" << std::endl;
-		else
-			std::cout << "Inode is Unallocated" << std::endl;
+	int allocated = extundelete_test_inode_bitmap(fs, ino);
+	if (allocated)
+		std::cout << "Inode is Allocated" << std::endl;
+	else
+		std::cout << "Inode is Unallocated" << std::endl;
 
-		std::cout << *inode << std::endl;
-		if (LINUX_S_ISDIR(inode->i_mode) && inode->i_blocks > 0)
-			print_directory_inode(fs, inode, ino);
+	std::cout << *inode << std::endl;
+	if (LINUX_S_ISDIR(inode->i_mode) && inode->i_blocks > 0)
+		print_directory_inode(fs, inode, ino);
 
-	finally:
-		delete inode;
-		return retval;
+finally:
+	delete inode;
+	return retval;
 }
 
 
