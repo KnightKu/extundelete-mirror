@@ -1674,51 +1674,64 @@ static void sanitize_file_name(std::string& str )
 
 }
 
+
 errcode_t restore_inode(ext2_filsys fs, ext2_filsys jfs, ext2_ino_t ino, const std::string& dname)
 {
 	errcode_t retval;
 	std::streampos fsize = 0;
 	blk64_t tsize;
 	std::string fname (dname);
-	sanitize_file_name(fname);
+	blk64_t blocknum = 0;
+	struct nth_block nb = {0, &blocknum};
+	std::string outputdir2;
+	size_t nextslash;
+	char *buf = NULL;
+	errcode_t flag = 0;
+	std::string fname2;
 	struct ext2_inode *inode;
+
+	sanitize_file_name(fname);
 	inode = (struct ext2_inode *) operator new(EXT2_INODE_SIZE(fs->super));
 	retval = recover_inode(fs, jfs, ino, inode, 0);
 	if( retval ) {
 		Log::warn << "Unable to restore inode " << ino << " (" << fname
 		<< "): No undeleted copies found in the journal." << std::endl;
-		delete inode;
-		return EU_RESTORE_FAIL;
+		retval = EU_RESTORE_FAIL;
+		goto finally;
 	}
-	blk64_t blocknum = 0;
-	struct nth_block nb = {0, &blocknum};
 	retval = extundelete_block_iterate3 (fs, *inode, BLOCK_FLAG_DATA_ONLY, NULL, get_nth_block_num64, &nb);
 	if( retval) {
 		Log::warn << "Unable to restore inode " << ino << " (" << fname
 		<< "): No data found." << std::endl;
-		delete inode;
-		return EU_RESTORE_FAIL;
+		retval = EU_RESTORE_FAIL;
+		goto finally;
 	}
 	if (blocknum != 0) {
 		int allocated = extundelete_test_block_bitmap(fs->block_map, blocknum);
 		if(allocated) {
 			Log::warn << "Unable to restore inode " << ino << " (" << fname
 			<< "): Space has been reallocated." << std::endl;
-			delete inode;
-			return EU_RESTORE_FAIL;
+			retval = EU_RESTORE_FAIL;
+			goto finally;
 		}
 	}
 
-	std::string outputdir2 = outputdir + fname;
-	size_t nextslash = outputdir2.find('/');
+	outputdir2 = outputdir + fname;
+	nextslash = outputdir2.find('/');
+	errno = 0;
 	do {
-		mkdir(outputdir2.substr(0, nextslash).c_str(), 0755);
+		retval = mkdir(outputdir2.substr(0, nextslash).c_str(), 0755);
+		if(retval && errno != EEXIST) {
+			com_err("extundelete", errno, "while creating directory %s",
+					outputdir2.substr(0, nextslash).c_str());
+			retval = errno;
+			goto finally;
+		}
 		nextslash = outputdir2.find('/', nextslash+1);
 	} while(nextslash != std::string::npos);
 
-	char *buf = new char[ block_size_];
-	errcode_t flag = 0;
-	std::string fname2 = fname;
+	buf = new char[ block_size_];
+	fname2 = fname;
 	// Make sure inode corresponds to regular file
 	if ( LINUX_S_ISREG(inode->i_mode) ) {
 
@@ -1780,8 +1793,10 @@ errcode_t restore_inode(ext2_filsys fs, ext2_filsys jfs, ext2_ino_t ino, const s
 		retval = EU_RESTORE_FAIL;
 	}
 
-	delete inode;
 	delete[] buf;
+
+finally:
+	delete inode;
 	return retval;
 }
 
@@ -1794,7 +1809,7 @@ static void parse_inode_block(ext2_filsys fs, struct ext2_inode *inode,
 	int n = 1 ;
 	int hostorder = (*(char *) &n != 1);
 	ext2fs_swap_inode_full(fs, (struct ext2_inode_large *) inode,
-		(struct ext2_inode_large *) inodebuf, 0, EXT2_INODE_SIZE(fs->super));
+			(struct ext2_inode_large *) inodebuf, 0, EXT2_INODE_SIZE(fs->super));
 #else
 	memcpy(inode, inodebuf, EXT2_INODE_SIZE(fs->super) );
 #endif
@@ -1811,12 +1826,12 @@ int get_journal_fs (ext2_filsys fs, ext2_filsys *jfs, std::string journal_filena
 	else {
 		// Read the journal superblock from an external journal.
 		if(journal_filename.empty()) {
-			Log::error << "Must specify the external journal with -j devicename" << std::endl;
+			Log::error << "Must specify the external journal device name" << std::endl;
 			return EU_EXAMINE_FAIL;
 		}
 		io_manager io_mgr = unix_io_manager;
 		errcode = ext2fs_open( journal_filename.c_str(),
-			EXT2_FLAG_JOURNAL_DEV_OK, 0, 0, io_mgr, jfs);
+				EXT2_FLAG_JOURNAL_DEV_OK, 0, 0, io_mgr, jfs);
 		if (errcode) {
 			com_err("extundelete", errcode, "while opening external journal");
 			return errcode;
