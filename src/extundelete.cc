@@ -1569,10 +1569,12 @@ static inline errcode_t inode_is_valid(const ext2_filsys fs, const struct ext2_i
 		inode->i_links_count > 0;
 }
 
+
 // Use ver = 0 to get previous behavior
 static errcode_t recover_inode(ext2_filsys fs, ext2_filsys jfs, ext2_ino_t ino,
 		struct ext2_inode *&inode, int ver)
 {
+	errcode_t retval = 0;
 	if ((ino == 0) || (ino > fs->super->s_inodes_count))
 		return EXT2_ET_BAD_INODE_NUM;
 	int group = ext2fs_group_of_ino(fs, ino);
@@ -1593,13 +1595,14 @@ static errcode_t recover_inode(ext2_filsys fs, ext2_filsys jfs, ext2_ino_t ino,
 	}
 	oldblks2.sort( compare_sequence );
 
-/*
-	std::list<block_pair_t>::iterator oit;
-	Log::debug << "oldblks contains:";
-	for ( oit=oldblks2.begin() ; oit != oldblks2.end(); oit++ )
-		Log::debug << " " << (*oit).first;
-	Log::debug << std::endl;
-//*/
+	if (Log::debug.rdbuf()) {
+		std::list<block_pair_t>::iterator oit;
+		Log::debug << "oldblks contains:";
+		for ( oit=oldblks2.begin() ; oit != oldblks2.end(); oit++ )
+			Log::debug << " " << (*oit).first;
+		Log::debug << std::endl;
+	}
+
 	bool found = false;
 	// If the inode is not allocated, we can just pick the first valid inode
 	bool deletedfound = !extundelete_test_inode_bitmap(fs, ino) &&
@@ -1609,7 +1612,8 @@ static errcode_t recover_inode(ext2_filsys fs, ext2_filsys jfs, ext2_ino_t ino,
 	std::list<block_pair_t>::reverse_iterator rit;
 	char *buf = new char[block_size_];
 	for ( rit=oldblks2.rbegin() ; rit != oldblks2.rend(); ++rit ) {
-		read_journal_block(jfs, ((*rit).first), buf);
+		retval = read_journal_block(jfs, ((*rit).first), buf);
+		if(retval)  break;
 		parse_inode_block(fs, inode, buf, ino);
 		if (inode->i_dtime != 0 && ((int64_t) (inode->i_dtime)) >= commandline_after &&
 				((int64_t) (inode->i_dtime)) <= commandline_before)
@@ -1626,15 +1630,16 @@ static errcode_t recover_inode(ext2_filsys fs, ext2_filsys jfs, ext2_ino_t ino,
 		}
 	}
 	delete[] buf;
-	if( !found ) return 1;
+	if( !found ) return EU_RESTORE_FAIL;
 
-	return 0;
+	return retval;
 }
 
 
-static int write_block64(ext2_filsys fs, blk64_t *blocknr, e2_blkcnt_t blockcnt,
+static int write_block(ext2_filsys fs, blk64_t *blocknr, e2_blkcnt_t blockcnt,
 		blk64_t /*ref_blk*/, int /*ref_offset*/, void *buf)
 {
+	errcode_t errcode;
 	std::fstream *file;
 	file = (((struct filebuf *)(buf))->file);
 	char *charbuf = ((struct filebuf *)buf)->buf;
@@ -1642,8 +1647,11 @@ static int write_block64(ext2_filsys fs, blk64_t *blocknr, e2_blkcnt_t blockcnt,
 	if(allocated == 0) {
 		std::streampos pos = blockcnt * block_size_;
 		(*file).seekp( pos );
-		read_block64(fs, blocknr, 0, 0, 0, charbuf);
+		if ( !(*file).good() )  return BLOCK_ERROR;
+		errcode = read_block64(fs, blocknr, 0, 0, 0, charbuf);
+		if (errcode)  return errcode;
 		(*file).write (charbuf, block_size_);
+		if ( !(*file).good() )  return BLOCK_ERROR;
 		return 0;
 	}
 	else {
@@ -1746,7 +1754,7 @@ errcode_t restore_inode(ext2_filsys fs, ext2_filsys jfs, ext2_ino_t ino, const s
 		if (file.is_open())
 		{
 			struct filebuf bufstruct = {&file, buf};
-			flag = extundelete_block_iterate3 (fs, *inode, BLOCK_FLAG_DATA_ONLY, NULL, write_block64, &bufstruct);
+			flag = extundelete_block_iterate3 (fs, *inode, BLOCK_FLAG_DATA_ONLY, NULL, write_block, &bufstruct);
 			file.seekg( 0, std::ios::end );
 			fsize = file.tellg();
 			file.close();
