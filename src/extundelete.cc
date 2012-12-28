@@ -925,6 +925,8 @@ int restore_directory(ext2_filsys fs, ext2_filsys jfs, ext2_ino_t dirino, std::s
 	recoverable_inodes.resize( rit - recoverable_inodes.begin() );
 
 	Log::status << recoverable_inodes.size() << " recoverable inodes found." << std::endl;
+
+	if( Log::debug.rdbuf() ) {
 /*
 	Log::debug << "Deleted inodes:  ";
 	for(std::list<ext2_ino_t>::iterator it2 = deleted_inodes.begin(); it2 != deleted_inodes.end(); it2++) {
@@ -937,6 +939,8 @@ int restore_directory(ext2_filsys fs, ext2_filsys jfs, ext2_ino_t dirino, std::s
 		Log::debug << (int) *it2 << "   " << std::flush;
 	}
 //*/
+	}
+
 	Log::status << "Looking through the directory structure for deleted files ... "
 	<< std::endl;
 	std::vector<ext2_ino_t>::size_type rsize = recoverable_inodes.size();
@@ -1440,9 +1444,9 @@ errcode_t restore_file(ext2_filsys fs, ext2_filsys jfs, const std::string& fname
 		ino2 = 0;
 	}
 
-	//Log::debug << "Post directory block search inode number: " << ino << std::endl;
-	//Log::debug << "Next file part: " << curr_part << std::endl;
-	//Log::debug << "File name and place: " << fname << "   " << place << std::endl;
+	Log::debug << "Post directory block search inode number: " << ino << std::endl;
+	Log::debug << "Next file part: " << curr_part << std::endl;
+	Log::debug << "File name and place: " << fname << "   " << place << std::endl;
 
 	char *buf2 = new char[ block_size_];
 	while(curr_part != "") {
@@ -1517,8 +1521,8 @@ errcode_t restore_file(ext2_filsys fs, ext2_filsys jfs, const std::string& fname
 
 	}
 
-	// Log::debug << "Post-revoke search current inode number: " << ino << std::endl;
-	// Log::debug << "Next file part: " << curr_part << std::endl;
+	Log::debug << "Post-revoke search current inode number: " << ino << std::endl;
+	Log::debug << "Next file part: " << curr_part << std::endl;
 
 	//delete priv;
 	delete new_ino;
@@ -1613,7 +1617,7 @@ static errcode_t recover_inode(ext2_filsys fs, ext2_filsys jfs, ext2_ino_t ino,
 	char *buf = new char[block_size_];
 	for ( rit=oldblks2.rbegin() ; rit != oldblks2.rend(); ++rit ) {
 		retval = read_journal_block(jfs, ((*rit).first), buf);
-		if(retval)  break;
+		if(retval)  continue;
 		parse_inode_block(fs, inode, buf, ino);
 		if (inode->i_dtime != 0 && ((int64_t) (inode->i_dtime)) >= commandline_after &&
 				((int64_t) (inode->i_dtime)) <= commandline_before)
