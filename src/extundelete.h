@@ -63,6 +63,7 @@ struct match_struct
 {
   ext2_ino_t *ret_ino;
   std::string curr_name;
+  ext2_filsys fs;
 };
 
 struct filebuf

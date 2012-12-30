@@ -1246,44 +1246,53 @@ static blk64_t journ_get_dir_block(ext2_filsys /*fs*/, blk64_t blknum, void * /*
 	}
 }
 
+
+static int match_ino(ext2_filsys fs, blk64_t *blocknr, e2_blkcnt_t /*blockcnt*/,
+		blk64_t /*ref*/, int /*off*/, void *priv)
+{
+	errcode_t retval = 0;
+	struct dir_context *ctx = (struct dir_context *) priv;
+	struct match_struct *ms = (struct match_struct *) ctx->priv_data;
+	char *buf = ctx->buf;
+	if(ctx->dir == SEARCH_JOURNAL) {
+		blk64_t blocknum = journ_get_dir_block (ms->fs, *blocknr, buf);
+		if(blocknum == 0)  return 0;
+		retval = extundelete_process_dir_block(ms->fs, &blocknum, 0, 0, 0, ctx);
+	} else {
+		retval = extundelete_process_dir_block(fs, blocknr, 0, 0, 0, ctx);
+	}
+
+	ext2_ino_t ino2 = *(ms->ret_ino);
+
+	if(ino2 != 0) return BLOCK_ABORT;
+	return retval;
+}
+
+
 static ext2_ino_t find_inode(ext2_filsys fs, ext2_filsys jfs, struct ext2_inode *inode,
-		std::string curr_part, blk64_t *blocks, int search_flags)
+		std::string curr_part, int search_flags)
 {
 	char *buf = new char[block_size_];
-	blk64_t blocknr;
 	ext2_ino_t ino2 = 0;
-	struct match_struct tmp = {0, curr_part};
+	struct match_struct tmp = {0, curr_part, jfs};
 	struct match_struct *priv = &tmp;
 	ext2_ino_t *new_ino = new ext2_ino_t;
 
-	for (blk64_t n = 0; n < numdatablocks(inode); ++n)
-	{
-		*new_ino = 0;
-		priv->ret_ino = new_ino;
-		priv->curr_name = curr_part;
-		struct dir_context ctx = {0, 
-			DIRENT_FLAG_INCLUDE_REMOVED, buf, match_name2, priv, 0};
-
-		if(search_flags == SEARCH_JOURNAL) {
-			blocknr = journ_get_dir_block (jfs, blocks[n], buf);
-			if(blocknr == 0) continue;
-			extundelete_process_dir_block(jfs, &blocknr, 0, 0, 0, &ctx);
-		}
-		else {
-			blocknr = blocks[n];
-			extundelete_process_dir_block(fs, &blocknr, 0, 0, 0, &ctx);
-		}
-
-		ino2 = *new_ino;
-
-		if(ino2 != 0) break;
-	}
+	*new_ino = 0;
+	priv->ret_ino = new_ino;
+	priv->curr_name = curr_part;
+	struct dir_context ctx = {search_flags, DIRENT_FLAG_INCLUDE_REMOVED,
+			buf, match_name2, priv, 0};
+	errcode_t code = extundelete_block_iterate3(fs, *inode, BLOCK_FLAG_DATA_ONLY,
+			NULL, match_ino, &ctx);
+	ino2 = *new_ino;
+	//if(code!=0 && code != BLOCK_ABORT)  ino2 = 0;
 
 	delete new_ino;
 	delete[] buf;
-
 	return ino2;
 }
+
 
 /* Pseudo code for what the search should look like:
 dir1/dir2 is inode ino
@@ -1314,7 +1323,7 @@ errcode_t restore_file(ext2_filsys fs, ext2_filsys jfs, const std::string& fname
 	std::string curr_part;
 	errcode_t retval;
 
-	struct match_struct tmp = {0, curr_part};
+	struct match_struct tmp = {0, curr_part, fs};
 	struct match_struct *priv = &tmp;
 	ext2_ino_t *new_ino = new ext2_ino_t;
 	*new_ino = EXT2_ROOT_INO;
@@ -1360,46 +1369,31 @@ errcode_t restore_file(ext2_filsys fs, ext2_filsys jfs, const std::string& fname
 	struct ext2_inode *inode;
 	inode = (struct ext2_inode *) operator new(EXT2_INODE_SIZE(fs->super));
 	retval = recover_inode(fs, jfs, ino, inode, 0);
-	blk64_t *blocks = NULL;
-	if (retval==0) {
-		//A bad inode may cause way too much memory to be allocated
-		try {
-			//FIXME: find a way to do this without allocating that big chunk in blocks variable
-			blocks = new blk64_t[ numdatablocks(inode) ];
-			extundelete_block_iterate3 (fs, *inode, BLOCK_FLAG_DATA_ONLY, NULL, get_block_nums64, blocks);
-		}
-		catch (std::exception& error) {
-			delete[] blocks;
-			blocks = NULL;
-		}
-	}
 
 	char *buf = new char[ block_size_];
 
 	struct ext2_inode *inode2;
 	inode2 = (struct ext2_inode *) operator new(EXT2_INODE_SIZE(fs->super));
 	ext2fs_read_inode_full (fs, ino, inode2, EXT2_INODE_SIZE(fs->super));
-	blk64_t *blocks2 = new blk64_t[ numdatablocks(inode2) ];
-	extundelete_block_iterate3 (fs, *inode2, BLOCK_FLAG_DATA_ONLY, 0, get_block_nums64, blocks2);
 
 	ext2_ino_t ino2 = 0;
 
 	// Look at the blocks from the allocated inode in the journal
-	ino2 = find_inode(fs, jfs, inode2, curr_part, blocks2, SEARCH_JOURNAL);
+	ino2 = find_inode(fs, jfs, inode2, curr_part, SEARCH_JOURNAL);
 
 	// Look at the blocks from the deleted inode in the journal
-	if(ino2 == 0 && blocks) {
-		ino2 = find_inode(fs, jfs, inode, curr_part, blocks, SEARCH_JOURNAL);
+	if(ino2 == 0) {
+		ino2 = find_inode(fs, jfs, inode, curr_part, SEARCH_JOURNAL);
 	}
 
 	// Look at the blocks from the allocated inode in the file system
 	if(ino2 == 0) {
-		ino2 = find_inode(fs, jfs, inode2, curr_part, blocks2, 0);
+		ino2 = find_inode(fs, jfs, inode2, curr_part, 0);
 	}
 
 	// Look at the blocks from the deleted inode in the filesystem
-	if(ino2 == 0 && blocks) {
-		ino2 = find_inode(fs, jfs, inode, curr_part, blocks, 0);
+	if(ino2 == 0) {
+		ino2 = find_inode(fs, jfs, inode, curr_part, 0);
 	}
 
 	// Look through all revoked blocks for matching string
@@ -1454,25 +1448,11 @@ errcode_t restore_file(ext2_filsys fs, ext2_filsys jfs, const std::string& fname
 		retval = recover_inode(fs, jfs, ino, inode, 0);
 		if(retval != 0) break;
 
-		blk64_t *blocks3 = NULL;
-		//A bad inode may cause way too much memory to be allocated
-		try {
-			blocks3 = new blk64_t[ numdatablocks(inode) ];
-			extundelete_block_iterate3 (fs, *inode, BLOCK_FLAG_DATA_ONLY, NULL, get_block_nums64, blocks3);
+		ino2 = find_inode(fs, jfs, inode, curr_part, SEARCH_JOURNAL);
 
-			// Look through copies of the blocks within the journal
-			ino2 = find_inode(fs, jfs, inode, curr_part, blocks3, SEARCH_JOURNAL);
-
-			// Looking through blocks in the filesystem in the right directory
-			if(ino2 == 0) {
-				ino2 = find_inode(fs, jfs, inode, curr_part, blocks3, 0);
-			}
-
-			delete[] blocks3;
-		}
-		catch (std::exception& error) {
-			delete[] blocks3;
-			blocks3 = NULL;
+		// Looking through blocks in the filesystem in the right directory
+		if(ino2 == 0) {
+			ino2 = find_inode(fs, jfs, inode, curr_part, 0);
 		}
 
 		// Looking through all revoked blocks
@@ -1528,8 +1508,6 @@ errcode_t restore_file(ext2_filsys fs, ext2_filsys jfs, const std::string& fname
 	delete new_ino;
 	delete inode;
 	delete inode2;
-	delete[] blocks;
-	delete[] blocks2;
 	delete[] buf;
 	delete[] buf2;
 
