@@ -267,15 +267,6 @@ static int extundelete_test_block_bitmap(ext2fs_block_bitmap block_map, blk64_t 
 }
 
 
-// Returns the number of total blocks of the inode used on disk, including
-// indirect blocks
-static inline blk64_t numblocks(const struct ext2_inode * const inode) {
-	// Calculated this way to avoid overflow
-	blk64_t spb = (blk64_t) block_size_ / 512; // Sectors per block
-	blk64_t val = (inode->i_blocks + block_size_/1024) / spb;
-	return val;
-}
-
 // Below are a bunch of functions used to convert 16, 32, and 64 bit
 // values read from disk to the proper endianness for the cpu we are
 // running this program on.  The 64-bit version has not undergone testing.
@@ -627,12 +618,32 @@ static int get_block_nums64(ext2_filsys /*fs*/, blk64_t *blocknr, e2_blkcnt_t bl
 }
 
 
+static int block_is_journal(ext2_filsys /*fs*/, blk64_t *blocknr, e2_blkcnt_t /*blockcnt*/,
+		blk64_t /*ref*/, int /*off*/, void *priv)
+{
+	blk64_t *test = reinterpret_cast<blk64_t*>(priv);
+	if (*test == *blocknr) {
+		*test = 0;
+		return BLOCK_ABORT;
+	}
+	return 0;
+}
+
+
 /*static*/ bool is_journal(ext2_filsys fs, blk64_t block)
 {
+	/* Warning: currently only works with internal journals */
 	bool flag = false;
 	ext2_ino_t ino = fs->super->s_journal_inum;
 	errcode_t errcode;
 	struct ext2_inode *inode;
+
+	if(block == 0) {
+		Log::error << "Invalid block number 0 encountered when finding blocks in the journal"
+		<< std::endl;
+		return flag;
+	}
+
 	inode = (struct ext2_inode *) operator new(EXT2_INODE_SIZE(fs->super));
 	errcode = ext2fs_read_inode_full (fs, ino, inode, EXT2_INODE_SIZE(fs->super));
 	if(errcode){
@@ -640,23 +651,17 @@ static int get_block_nums64(ext2_filsys /*fs*/, blk64_t *blocknr, e2_blkcnt_t bl
 		<< errcode << std::endl;
 		return flag;
 	}
-	blk64_t *blocks = new blk64_t[ numblocks(inode) ];
 
-	errcode = extundelete_block_iterate3 (fs, *inode, 0, 0, get_block_nums64, blocks);
+	errcode = extundelete_block_iterate3 (fs, *inode, 0, 0, block_is_journal, &block);
 	if(errcode){
 		std::cout << "Warning: unknown error encountered; code "
 		<< errcode << std::endl;
 		return flag;
 	}
-	std::cout << blocks[0] << std::endl;
-	for (uint32_t n = 0; n < numblocks(inode); n++)
-		if (block == blocks[n])
-		{
-			flag = true;
-			break;
-		}
+	if(block == 0)
+		flag = true;
+
 	delete inode;
-	delete[] blocks;
 	return flag;
 }
 
@@ -1533,7 +1538,6 @@ static inline errcode_t inode_is_valid(const ext2_filsys fs, const struct ext2_i
 	/* Remember this must account for both files and directories */
 	return
 		inode->i_dtime == 0 &&
-		numblocks(inode) > 0 &&
 		inode->i_blocks <= fs->super->s_blocks_count &&
 		inode->i_blocks > 0 &&
 		inode->i_links_count > 0;
