@@ -106,7 +106,7 @@ static errcode_t ext2fs_bmap2(ext2_filsys fs, ext2_ino_t ino,
 {
 	errcode_t retval;
 	blk_t block32, phys_blk32;
-	if(block > UINT_MAX)
+	if(block > UINT32_MAX)
 		return EDOM;
 	block32 = (blk_t) block;
 	retval = ext2fs_bmap(fs, ino, inode, block_buf, bmap_flags, block32, &phys_blk32);
@@ -558,26 +558,22 @@ errcode_t read_block64(ext2_filsys fs, blk64_t *blocknr, e2_blkcnt_t blockcnt,
 }
 
 
-dgrp_t extundelete_group_of_blk(ext2_filsys fs, blk64_t block) {
-#ifdef HAVE_EXT2FS_GROUP_OF_BLK2
-	return ext2fs_group_of_blk2(fs, block);
-#else
+#ifndef HAVE_EXT2FS_GROUP_OF_BLK2
+static dgrp_t ext2fs_group_of_blk2(ext2_filsys fs, blk64_t block) {
 	if(block > UINT32_MAX)
 		return EDOM;
 	return ext2fs_group_of_blk(fs, (blk_t) block);
-#endif
 }
+#endif
 
 
-errcode_t extundelete_read_dir_block(ext2_filsys fs, blk64_t block, void *buf) {
-#ifdef HAVE_EXT2FS_READ_DIR_BLOCK3
-	return ext2fs_read_dir_block3(fs, block, buf, 0);
-#else
+#ifndef HAVE_EXT2FS_READ_DIR_BLOCK3
+static errcode_t ext2fs_read_dir_block3(ext2_filsys fs, blk64_t block, void *buf, int flags) {
 	if(block > UINT32_MAX)
 		return EDOM;
 	return ext2fs_read_dir_block(fs, (blk_t) block, buf);
-#endif
 }
+#endif
 
 
 // This function prints the data contained within the block blocknr
@@ -594,9 +590,9 @@ void classify_block(ext2_filsys fs, blk64_t blocknr)
 	int allocated = extundelete_test_block_bitmap(fs->block_map, blocknr);
 	if(!allocated) std::cout << "not ";
 	std::cout << "allocated." << std::endl;
-	std::cout << "Block " << blocknr <<" is in group " << extundelete_group_of_blk(fs, blocknr)
+	std::cout << "Block " << blocknr <<" is in group " << ext2fs_group_of_blk2(fs, blocknr)
 	<< "." << std::endl;
-	errcode_t retval = extundelete_read_dir_block(fs, blocknr, block);
+	errcode_t retval = ext2fs_read_dir_block3(fs, blocknr, block, 0);
 	if(retval == 0) {
 		std::cout << "File name                                       ";
 		std::cout << "| Inode number | Deleted status\n";
