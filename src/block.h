@@ -26,7 +26,7 @@ struct dir_context {
 int extundelete_process_dir_block(ext2_filsys fs,
 			     blk64_t	*blocknr,
 			     e2_blkcnt_t blockcnt,
-			     blk_t	ref_block EXT2FS_ATTR((unused)),
+			     blk64_t	ref_block EXT2FS_ATTR((unused)),
 			     int	ref_offset EXT2FS_ATTR((unused)),
 			     void	*priv_data);
 

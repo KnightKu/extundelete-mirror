@@ -186,12 +186,6 @@ template<class T1, class T2, class T3>
 	{ return x.first < y.first; }
 
 
-struct nth_block {
-	blk64_t n;
-	blk64_t *blknum;
-};
-
-
 #ifndef EXT4_FEATURE_INCOMPAT_64BIT
 #define EXT4_FEATURE_INCOMPAT_64BIT 0x0080
 #endif
@@ -523,20 +517,15 @@ static int print_entry(ext2_ino_t /*dir*/, int entry,
 }
 
 void print_directory_inode(ext2_filsys fs, struct ext2_inode *inode,
-		ext2_ino_t ino)
+		ext2_ino_t /*ino*/)
 {
-	blk64_t blocknr;
-	int bmapflags = 0;
 	char *buf = new char[EXT2_BLOCK_SIZE(fs->super)];
 	std::cout << "File name                                       ";
 	std::cout << "| Inode number | Deleted status\n";
-	for(blk64_t n = 0; n < numdatablocks(inode); n++) {
-		ext2fs_bmap2(fs, ino, inode, NULL, bmapflags, n, NULL, &blocknr);
-		std::cout << "Directory block " << blocknr << ":\n";
-		struct dir_context ctx = {0,
+	struct dir_context ctx = {0,
 			DIRENT_FLAG_INCLUDE_REMOVED, buf, print_entry, fs, 0};
-		extundelete_process_dir_block(fs, &blocknr, 0, 0, 0, &ctx);
-	}
+	extundelete_block_iterate3 (fs, *inode, BLOCK_FLAG_DATA_ONLY, NULL,
+				extundelete_process_dir_block, &ctx);
 	delete[] buf;
 }
 
@@ -647,18 +636,6 @@ static int get_block_nums64(ext2_filsys /*fs*/, blk64_t *blocknr, e2_blkcnt_t bl
 	return 0;
 }
 
-// Store the nth block number in a buffer.
-static int get_nth_block_num64(ext2_filsys /*fs*/, blk64_t *blocknr, e2_blkcnt_t blockcnt,
-		blk64_t /*ref*/, int /*off*/, void *buf)
-{
-	struct nth_block *nth_blk = reinterpret_cast<nth_block *>(buf);
-	if( (blk64_t) blockcnt == nth_blk->n) {
-		*(nth_blk->blknum) = *blocknr;
-		return BLOCK_ABORT;
-	}
-	return 0;
-}
-
 
 /*static*/ bool is_journal(ext2_filsys fs, blk64_t block)
 {
@@ -752,8 +729,17 @@ static int entry_iterate(ext2_ino_t /*dir*/, int entry,
 
 }
 
-/*
- * pair_names_with: look through directory blocks to find deleted file names,
+
+static int process_deleted_dir(ext2_filsys fs, blk64_t *blocknr, e2_blkcnt_t /*blockcnt*/,
+		blk64_t /*ref*/, int /*off*/, void *priv)
+{
+	if(extundelete_test_block_bitmap(fs->block_map, *blocknr))
+		return 0;
+	return extundelete_process_dir_block(fs, blocknr, 0, 0, 0, priv);
+}
+
+
+/* pair_names_with: look through directory blocks to find deleted file names,
  * then pair those names with the inode number from the directory block.
  * This function should only be called when we think the file pointed to by 
  * "ino" is a directory.  The flag "del" indicates whether the directory entry
@@ -780,17 +766,12 @@ static int pair_names_with(ext2_filsys fs, ext2_filsys jfs, std::vector<ext2_ino
 		retval = ext2fs_read_inode_full(fs, ino, inode, EXT2_INODE_SIZE(fs->super));
 
 	if(retval == 0 && LINUX_S_ISDIR(inode->i_mode) ) {
-		blk64_t *blocks = new blk64_t[ numdatablocks(inode) ];
-		extundelete_block_iterate3 (fs, *inode, BLOCK_FLAG_DATA_ONLY, NULL, get_block_nums64, blocks);
-
-		for(blk64_t n = 0; n < numdatablocks(inode); n++) {
-			blk64_t blknum = blocks[n];
-			struct pair_struct ps = {fs, jfs, inolist, ino, dirname, 0, parent_inos};
-			struct dir_context ctx = {0, 
+		struct pair_struct ps = {fs, jfs, inolist, ino, dirname, 0, parent_inos};
+		struct dir_context ctx = {0, 
 				DIRENT_FLAG_INCLUDE_REMOVED, buf, entry_iterate, &ps, 0};
-			extundelete_process_dir_block(fs, &blknum, 0, 0, 0, &ctx);
-		}
-		delete[] blocks;
+		/* FIXME: What should be done if this encounters an error? */
+		extundelete_block_iterate3 (fs, *inode, BLOCK_FLAG_DATA_ONLY, NULL,
+				extundelete_process_dir_block, &ctx);
 	}
 
 	if(inolist.size() == 0) { delete inode; delete[] buf; return 0; }
@@ -814,19 +795,11 @@ static int pair_names_with(ext2_filsys fs, ext2_filsys jfs, std::vector<ext2_ino
 		retval = recover_inode(fs, jfs, ino, inode, 0);
 
 	if(retval == 0 && LINUX_S_ISDIR(inode->i_mode) ) {
-
-		for(blk64_t n = 0; n < numdatablocks(inode); n++) {
-			blk64_t blknum = 0;
-			struct nth_block nb = {n, &blknum};
-			extundelete_block_iterate3 (fs, *inode, BLOCK_FLAG_DATA_ONLY, NULL, get_nth_block_num64, &nb);
-			// If the block is allocated, it is not valid.
-			if(extundelete_test_block_bitmap(fs->block_map, blknum))
-				continue;
-			struct pair_struct ps = {fs, jfs, inolist, ino, dirname, 1, parent_inos};
-			struct dir_context ctx = {0, 
+		struct pair_struct ps = {fs, jfs, inolist, ino, dirname, 1, parent_inos};
+		struct dir_context ctx = {0, 
 				DIRENT_FLAG_INCLUDE_REMOVED, buf, entry_iterate, &ps, 0};
-			extundelete_process_dir_block(fs, &blknum, 0, 0, 0, &ctx);
-		}
+		/* On error, it should probably just continue */
+		extundelete_block_iterate3 (fs, *inode, BLOCK_FLAG_DATA_ONLY, NULL, process_deleted_dir, &ctx);
 	}
 
 	if(inolist.size() == 0) { delete inode; delete[] buf; return 0; }
@@ -1691,20 +1664,31 @@ static void sanitize_file_name(std::string& str )
 }
 
 
+static int first_block_is_allocated(ext2_filsys fs, blk64_t *blocknr, e2_blkcnt_t /*blockcnt*/,
+		blk64_t /*ref*/, int /*off*/, void *ans)
+{
+	int *allocated = reinterpret_cast<int *>(ans);
+	if( *blocknr != 0 ) {
+		*allocated = extundelete_test_block_bitmap(fs->block_map, *blocknr);
+		return BLOCK_ABORT;
+	}
+	return 0;
+}
+
+
 errcode_t restore_inode(ext2_filsys fs, ext2_filsys jfs, ext2_ino_t ino, const std::string& dname)
 {
 	errcode_t retval;
 	std::streampos fsize = 0;
 	blk64_t tsize;
 	std::string fname (dname);
-	blk64_t blocknum = 0;
-	struct nth_block nb = {0, &blocknum};
 	std::string outputdir2;
 	size_t nextslash;
 	char *buf = NULL;
 	errcode_t flag = 0;
 	std::string fname2;
 	struct ext2_inode *inode;
+	int allocated = 2;
 
 	sanitize_file_name(fname);
 	inode = (struct ext2_inode *) operator new(EXT2_INODE_SIZE(fs->super));
@@ -1715,21 +1699,18 @@ errcode_t restore_inode(ext2_filsys fs, ext2_filsys jfs, ext2_ino_t ino, const s
 		retval = EU_RESTORE_FAIL;
 		goto finally;
 	}
-	retval = extundelete_block_iterate3 (fs, *inode, BLOCK_FLAG_DATA_ONLY, NULL, get_nth_block_num64, &nb);
+	retval = extundelete_block_iterate3 (fs, *inode, BLOCK_FLAG_DATA_ONLY, NULL, first_block_is_allocated, &allocated);
 	if( retval) {
 		Log::warn << "Unable to restore inode " << ino << " (" << fname
 		<< "): No data found." << std::endl;
 		retval = EU_RESTORE_FAIL;
 		goto finally;
 	}
-	if (blocknum != 0) {
-		int allocated = extundelete_test_block_bitmap(fs->block_map, blocknum);
-		if(allocated) {
-			Log::warn << "Unable to restore inode " << ino << " (" << fname
-			<< "): Space has been reallocated." << std::endl;
-			retval = EU_RESTORE_FAIL;
-			goto finally;
-		}
+	if(allocated) {
+		Log::warn << "Unable to restore inode " << ino << " (" << fname
+		<< "): Space has been reallocated." << std::endl;
+		retval = EU_RESTORE_FAIL;
+		goto finally;
 	}
 
 	outputdir2 = outputdir + fname;
