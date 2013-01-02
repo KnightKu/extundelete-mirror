@@ -266,16 +266,6 @@ static int extundelete_test_block_bitmap(ext2fs_block_bitmap block_map, blk64_t 
 	}
 }
 
-// Returns the number of blocks a non-sparse file would need for the data
-static inline blk64_t numdatablocks(const struct ext2_inode * const inode) {
-	blk64_t val = 0;
-	if( LINUX_S_ISDIR(inode->i_mode) ) {
-		val = (inode->i_size + block_size_ - 1) / block_size_;
-	} else {
-		val = (EXT2_I_SIZE(inode) + block_size_ - 1) / block_size_;
-	}
-	return val;
-}
 
 // Returns the number of total blocks of the inode used on disk, including
 // indirect blocks
@@ -1544,7 +1534,6 @@ static inline errcode_t inode_is_valid(const ext2_filsys fs, const struct ext2_i
 	return
 		inode->i_dtime == 0 &&
 		numblocks(inode) > 0 &&
-		numdatablocks(inode) > 0 &&
 		inode->i_blocks <= fs->super->s_blocks_count &&
 		inode->i_blocks > 0 &&
 		inode->i_links_count > 0;
