@@ -1759,6 +1759,11 @@ errcode_t restore_inode(ext2_filsys fs, ext2_filsys jfs, ext2_ino_t ino, const s
 				}
 			}
 			else {
+				retval = rename( (outputdir + fname2).c_str(), (outputdir + fname2 + ".part").c_str() );
+				if(retval) {
+					Log::warn << "extundelete: " << strerror(errno) << " when renaming file "
+					<< (outputdir + fname2).c_str();
+				}
 				Log::warn << "Failed to restore inode " << ino << " to file "
 				<< (outputdir + fname2) << ":"
 				<< "Some blocks were allocated." << std::endl;
