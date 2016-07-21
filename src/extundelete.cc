@@ -90,6 +90,7 @@ Important future enhancements:
 #include <fcntl.h>
 #include <unistd.h>
 #include <utime.h>
+#include <sys/time.h>
 
 /* ext3/4 libraries */
 #include <ext2fs/ext2fs.h>
@@ -1746,8 +1747,15 @@ errcode_t restore_inode(ext2_filsys fs, ext2_filsys jfs, ext2_ino_t ino, const s
 				}
 				tsize = fsize - rsize;
 				if ((retval = truncate( (outputdir + fname2).c_str(), tsize)) == 0) {
+					struct timeval times[2];
+
+					chmod((outputdir + fname2).c_str(),inode->i_mode);
+					lchown((outputdir + fname2).c_str(),inode->i_uid,inode->i_gid);
+					times[0].tv_sec=inode->i_atime; times[0].tv_usec=0;
+					times[1].tv_sec=inode->i_mtime; times[1].tv_usec=0;
+					utimes((outputdir + fname2).c_str(),times);
 					Log::info << "Restored inode " << ino << " to file "
-					<< (outputdir + fname2) << std::endl;
+					<< (outputdir + fname2) << " deleted " << asctime(localtime((time_t*)&inode->i_dtime)) << std::endl;
 					retval = 0;
 				} else {
 					Log::warn << "Failed to restore inode " << ino << " to file "
@@ -1776,6 +1784,23 @@ errcode_t restore_inode(ext2_filsys fs, ext2_filsys jfs, ext2_ino_t ino, const s
 			<< "Could not open output file." << std::endl;
 			retval = EU_RESTORE_FAIL;
 		}
+	}
+	else if (LINUX_S_ISDIR(inode->i_mode)) {
+	        if(mkdir((outputdir2 + fname2).c_str(), 0700)) {
+    		        struct timeval times[2];
+            		chmod((outputdir + fname2).c_str(),inode->i_mode);
+            		lchown((outputdir + fname2).c_str(),inode->i_uid,inode->i_gid);
+            		times[0].tv_sec=inode->i_atime; times[0].tv_usec=0;
+            		times[1].tv_sec=inode->i_mtime; times[1].tv_usec=0;
+    		        utimes((outputdir + fname2).c_str(),times);
+	                std::cout << "Restored inode " << ino << " as directory ";
+        	        std::cout << (outputdir + fname2) << " deleted " << asctime(localtime((time_t*)&inode->i_dtime));
+    	        	retval = 0;
+    		} else {
+	                std::cout << "Failed to restore inode " << ino << " as directory ";
+            		std::cout << (outputdir + fname2) << " deleted " << asctime(localtime((time_t*)&inode->i_dtime));
+            		retval = EU_RESTORE_FAIL;
+    		}
 	}
 	else {
 		Log::info << "extundelete identified inode " << ino << " as "
